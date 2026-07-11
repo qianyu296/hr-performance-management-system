@@ -1,0 +1,13 @@
+:root { font-family: Inter, "Microsoft YaHei", sans-serif; color: #17202a; background: #f5f7fa; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.shell { min-height: 100vh; }
+header { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 28px; background: #17324d; color: #fff; }
+.brand { font-weight: 700; letter-spacing: 0; }
+.environment { font-size: 12px; color: #b8d0df; }
+section { max-width: 1120px; margin: 40px auto; padding: 0 28px; }
+h1 { margin: 0 0 10px; font-size: 24px; }
+p { color: #52616b; }
+dl { margin-top: 24px; background: #fff; border: 1px solid #dce3e8; border-radius: 6px; padding: 16px; max-width: 320px; }
+dt { font-size: 13px; color: #64748b; }
+dd { margin: 6px 0 0; font-weight: 600; }
