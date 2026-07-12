@@ -28,6 +28,62 @@ paths:
     get:
       operationId: getCurrentUser
       responses: {'200': {$ref: '#/components/responses/Success'}}
+  /departments:
+    get:
+      operationId: listDepartmentTree
+      responses: {'200': {description: Department tree, content: {application/json: {schema: {$ref: '#/components/schemas/DepartmentTreeResponse'}}}}, '403': {$ref: '#/components/responses/Error'}}
+  /positions:
+    get:
+      operationId: listPositions
+      responses: {'200': {description: Position list, content: {application/json: {schema: {$ref: '#/components/schemas/PositionListResponse'}}}}}
+    post:
+      operationId: createPosition
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreatePositionRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '409': {$ref: '#/components/responses/Error'}}
+  /positions/{id}:
+    patch:
+      operationId: updatePosition
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdatePositionRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '409': {$ref: '#/components/responses/Error'}}
+  /ranks:
+    get:
+      operationId: listRanks
+      responses: {'200': {description: Rank list, content: {application/json: {schema: {$ref: '#/components/schemas/RankListResponse'}}}}}
+    post:
+      operationId: createRank
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateRankRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '409': {$ref: '#/components/responses/Error'}}
+  /ranks/{id}:
+    patch:
+      operationId: updateRank
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateRankRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '409': {$ref: '#/components/responses/Error'}}
+  /employees:
+    get:
+      operationId: listEmployees
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: keyword, in: query, schema: {type: string}}
+        - {name: departmentId, in: query, schema: {type: string}}
+        - {name: positionId, in: query, schema: {type: string}}
+        - {name: employmentStatus, in: query, schema: {type: string}}
+      responses: {'200': {description: Employee page, content: {application/json: {schema: {$ref: '#/components/schemas/EmployeePageResponse'}}}}}
+    post:
+      operationId: createEmployee
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateEmployeeRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /employees/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: getEmployee
+      responses: {'200': {description: Employee detail, content: {application/json: {schema: {$ref: '#/components/schemas/EmployeeDetailResponse'}}}}, '404': {$ref: '#/components/responses/Error'}}
+    patch:
+      operationId: updateEmployee
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateEmployeeRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
   /{resource}:
     parameters: [{name: resource, in: path, required: true, schema: {type: string, enum: [users, roles, menus, dictionaries, departments, positions, ranks, employees, personnel-changes, contracts, leave-types, work-calendars, leave-requests, overtime-requests, goals, performance/metrics, performance/schemes, performance/cycles, todos, exports]}}]
     get:
@@ -127,3 +183,40 @@ components:
     WorkflowActionCommand: {type: object, required: [version, comment], properties: {version: {type: string}, comment: {type: string, minLength: 1}, transferToUserId: {type: string}}}
     PerformanceActionCommand: {type: object, required: [version, items], properties: {version: {type: string}, items: {type: array, items: {type: object, required: [taskItemId], properties: {taskItemId: {type: string}, score: {type: number}, comment: {type: string}, fileIds: {type: array, items: {type: string}}}}}, adjustedScore: {type: number}, adjustedLevel: {type: string}, reason: {type: string}}}
     UploadRequest: {type: object, required: [filename, size, sha256, mediaType], properties: {filename: {type: string}, size: {type: integer, maximum: 52428800}, sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}, mediaType: {type: string}}}
+    DepartmentNode:
+      type: object
+      required: [id, code, name, path, status, children]
+      properties: {id: {type: string}, code: {type: string}, name: {type: string}, parentId: {type: [string, 'null']}, path: {type: string}, status: {type: string}, children: {type: array, items: {$ref: '#/components/schemas/DepartmentNode'}}}
+    Position:
+      type: object
+      required: [id, code, name, sortNo, status, version]
+      properties: {id: {type: string}, code: {type: string}, name: {type: string}, jobFamily: {type: [string, 'null']}, description: {type: [string, 'null']}, sortNo: {type: integer}, status: {type: string}, version: {type: string}}
+    Rank:
+      type: object
+      required: [id, code, name, rankOrder, status, version]
+      properties: {id: {type: string}, code: {type: string}, name: {type: string}, rankOrder: {type: integer}, status: {type: string}, version: {type: string}}
+    EmployeeListItem:
+      type: object
+      required: [id, employeeNo, name, departmentName, positionName, employmentStatus, version]
+      properties: {id: {type: string}, employeeNo: {type: string}, name: {type: string}, departmentName: {type: string}, positionName: {type: string}, rankName: {type: [string, 'null']}, managerName: {type: [string, 'null']}, employmentStatus: {type: string}, version: {type: string}}
+    EmployeeDetail:
+      allOf:
+        - {$ref: '#/components/schemas/EmployeeListItem'}
+        - {type: object, required: [departmentId, positionId, hireDate], properties: {gender: {type: [string, 'null']}, departmentId: {type: string}, positionId: {type: string}, rankId: {type: [string, 'null']}, managerEmployeeId: {type: [string, 'null']}, hireDate: {type: string, format: date}, probationStartDate: {type: [string, 'null'], format: date}, probationEndDate: {type: [string, 'null'], format: date}}}
+    CreatePositionRequest: {type: object, required: [code, name, sortNo, status], properties: {code: {type: string}, name: {type: string}, jobFamily: {type: string}, description: {type: string}, sortNo: {type: integer}, status: {type: string}}}
+    UpdatePositionRequest: {type: object, required: [name, sortNo, status, version], properties: {name: {type: string}, jobFamily: {type: string}, description: {type: string}, sortNo: {type: integer}, status: {type: string}, version: {type: string}}}
+    CreateRankRequest: {type: object, required: [code, name, rankOrder, status], properties: {code: {type: string}, name: {type: string}, rankOrder: {type: integer}, status: {type: string}}}
+    UpdateRankRequest: {type: object, required: [name, rankOrder, status, version], properties: {name: {type: string}, rankOrder: {type: integer}, status: {type: string}, version: {type: string}}}
+    CreateEmployeeRequest:
+      type: object
+      required: [employeeNo, name, departmentId, positionId, employmentStatus, hireDate]
+      properties: {employeeNo: {type: string}, name: {type: string}, gender: {type: string}, departmentId: {type: string}, positionId: {type: string}, rankId: {type: string}, managerEmployeeId: {type: string}, employmentStatus: {type: string}, hireDate: {type: string, format: date}, probationStartDate: {type: string, format: date}, probationEndDate: {type: string, format: date}}
+    UpdateEmployeeRequest:
+      type: object
+      required: [name, departmentId, positionId, hireDate, version]
+      properties: {name: {type: string}, gender: {type: string}, departmentId: {type: string}, positionId: {type: string}, rankId: {type: string}, managerEmployeeId: {type: string}, hireDate: {type: string, format: date}, probationStartDate: {type: string, format: date}, probationEndDate: {type: string, format: date}, version: {type: string}}
+    DepartmentTreeResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/DepartmentNode'}}}}]}
+    PositionListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/Position'}}}}]}
+    RankListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/Rank'}}}}]}
+    EmployeeDetailResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {$ref: '#/components/schemas/EmployeeDetail'}}}]}
+    EmployeePageResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: object, required: [records,total,page,pageSize], properties: {records: {type: array, items: {$ref: '#/components/schemas/EmployeeListItem'}}, total: {type: integer}, page: {type: integer}, pageSize: {type: integer}}}}}]}

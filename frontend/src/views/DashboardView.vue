@@ -1,28 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { http } from '@/api/http'
+import PageFrame from '@/components/common/PageFrame.vue'
 
-const health = ref('Checking API...')
-
-async function checkApi() {
-  try {
-    const response = await http.get('/health')
-    health.value = response.data.data.status
-  } catch {
-    health.value = 'Unavailable'
-  }
-}
-
-void checkApi()
+const metrics = [
+  { label: '待处理审批', value: '0', note: '请假、人事与绩效流程' },
+  { label: '我的请假', value: '0', note: '本月申请与待提交草稿' },
+  { label: '绩效任务', value: '0', note: '当前周期待完成事项' },
+  { label: '未读通知', value: '0', note: '系统与流程消息' },
+]
 </script>
 
 <template>
-  <main class="shell">
-    <header><span class="brand">HRPM</span><span class="environment">Development</span></header>
-    <section>
-      <h1>工作台</h1>
-      <p>人力资源与绩效管理系统的开发基础已就绪。</p>
-      <dl><dt>API 状态</dt><dd>{{ health }}</dd></dl>
+  <PageFrame title="工作台" description="聚合待办、通知和当前工作周期的关键事项。">
+    <div class="metric-grid">
+      <article v-for="metric in metrics" :key="metric.label" class="metric-item">
+        <span>{{ metric.label }}</span>
+        <strong>{{ metric.value }}</strong>
+        <small>{{ metric.note }}</small>
+      </article>
+    </div>
+    <section class="dashboard-section">
+      <div class="section-heading">
+        <h2>待处理事项</h2>
+        <el-button text>查看全部</el-button>
+      </div>
+      <el-table :data="[]" class="data-table">
+        <el-table-column label="业务类型" min-width="180" />
+        <el-table-column label="事项" min-width="260" />
+        <el-table-column label="发起人" width="140" />
+        <el-table-column label="提交时间" width="180" />
+        <el-table-column label="操作" width="120" />
+      </el-table>
+      <div class="empty-inline">暂无待处理事项</div>
     </section>
-  </main>
+  </PageFrame>
 </template>

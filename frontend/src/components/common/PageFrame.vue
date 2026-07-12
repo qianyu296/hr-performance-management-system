@@ -1,0 +1,2 @@
+<script setup lang="ts">defineProps<{ title: string; description: string }>();</script>
+<template><section class="page-frame"><div class="page-heading"><div><h1>{{ title }}</h1><p>{{ description }}</p></div><div class="page-actions"><slot name="actions" /></div></div><div v-if="$slots.filters" class="page-filters"><slot name="filters" /></div><div class="page-content"><slot /></div></section></template>
