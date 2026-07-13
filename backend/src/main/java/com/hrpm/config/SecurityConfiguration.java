@@ -37,7 +37,7 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health", "/actuator/health", "/auth/**").permitAll()
+                        .requestMatchers("/health", "/actuator/health", "/auth/login", "/auth/refresh").permitAll()
                         .anyRequest().authenticated())
                 .build();
     }
@@ -45,8 +45,9 @@ public class SecurityConfiguration {
     @Bean
     TokenService tokenService(
             @Value("${app.security.jwt-signing-key}") String signingKey,
-            @Value("${app.security.access-token-ttl:PT15M}") Duration accessTokenTtl) {
-        return new TokenService(signingKey, accessTokenTtl, Clock.systemUTC());
+            @Value("${app.security.access-token-ttl:PT15M}") Duration accessTokenTtl,
+            @Value("${app.security.refresh-token-ttl:P14D}") Duration refreshTokenTtl) {
+        return new TokenService(signingKey, accessTokenTtl, refreshTokenTtl, Clock.systemUTC());
     }
 
     @Bean

@@ -15,6 +15,8 @@
 2. Start backend: `cd backend; mvn spring-boot:run`.
 3. Start frontend: `cd frontend; npm install; npm run dev`.
 
+For an existing local MySQL instance, provide `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` as environment variables rather than changing `application.yml`.
+
 The backend runs on `http://localhost:8080`; the frontend runs on `http://localhost:5173`.
 
 ## Documentation

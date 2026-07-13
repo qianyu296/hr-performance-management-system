@@ -12,7 +12,7 @@ const authStore = useAuthStore()
 const title = computed(() => String(route.meta.title ?? '工作台'))
 
 async function logout() {
-  authStore.signOut()
+  await authStore.signOut()
   await router.replace('/login')
 }
 </script>

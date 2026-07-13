@@ -50,6 +50,7 @@ class AuthenticationApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
     }
 
@@ -70,5 +71,38 @@ class AuthenticationApiIntegrationTests {
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.userId").value("90001"))
                 .andExpect(jsonPath("$.data.username").value("auth-test-admin"));
+    }
+
+    @Test
+    void bearerTokenReturnsCurrentPermissionCodes() throws Exception {
+        mockMvc.perform(get("/me/permissions")
+                        .header("Authorization", "Bearer " + tokenService.issueAccess(90001L, "auth-test-admin", 2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    void refreshTokenReturnsNewSessionPair() throws Exception {
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + tokenService.issueRefresh(90001L, "auth-test-admin", 2) + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
+    }
+
+    @Test
+    void logoutInvalidatesExistingAccessToken() throws Exception {
+        String accessToken = tokenService.issueAccess(90001L, "auth-test-admin", 2);
+
+        mockMvc.perform(post("/auth/logout").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"));
+
+        mockMvc.perform(get("/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_SESSION_INVALID"));
     }
 }

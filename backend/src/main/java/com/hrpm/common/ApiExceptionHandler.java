@@ -8,6 +8,7 @@ import com.hrpm.common.exception.DuplicateResourceException;
 import com.hrpm.common.exception.VersionConflictException;
 import com.hrpm.common.exception.OrganizationReferenceInvalidException;
 import com.hrpm.common.exception.ResourceNotFoundException;
+import com.hrpm.common.exception.TokenValidationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,5 +61,11 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAuthenticationFailed(AuthenticationFailedException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiResponse<>("AUTH_INVALID_CREDENTIALS", "Username or password is invalid", null, TraceIdContext.current()));
+    }
+
+    @ExceptionHandler(TokenValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidToken(TokenValidationException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiResponse<>("AUTH_SESSION_INVALID", "Session token is invalid or expired", null, TraceIdContext.current()));
     }
 }

@@ -19,3 +19,6 @@ Thumbs.db
 .env.*
 !*.example
 *.log
+
+# Local code intelligence index
+.codegraph/

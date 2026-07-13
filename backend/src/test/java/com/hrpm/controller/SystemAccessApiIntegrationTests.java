@@ -1,0 +1,89 @@
+package com.hrpm.controller;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.hrpm.service.TokenService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@TestPropertySource(properties = "app.security.jwt-signing-key=test-signing-key-at-least-32-characters")
+class SystemAccessApiIntegrationTests {
+    private static final long ADMIN_USER_ID = 87001L;
+    private static final long TARGET_USER_ID = 87002L;
+    private static final long ADMIN_ROLE_ID = 87011L;
+    private static final long INITIAL_ROLE_ID = 87012L;
+    private static final long REPLACEMENT_ROLE_ID = 87013L;
+    private static final long SYSTEM_MENU_ID = 87021L;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TokenService tokenService;
+
+    @BeforeEach
+    void setUp() {
+        clearFixtures();
+
+        jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version, version) VALUES (?, 'system-access-admin', 'unused', 'ACTIVE', 0, 0)", ADMIN_USER_ID);
+        jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version, version) VALUES (?, 'system-access-target', 'unused', 'ACTIVE', 0, 0)", TARGET_USER_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_ADMIN', 'System access admin', 'ACTIVE', 0)", ADMIN_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_INITIAL', 'Initial role', 'ACTIVE', 0)", INITIAL_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_REPLACEMENT', 'Replacement role', 'ACTIVE', 0)", REPLACEMENT_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_menu (id, name, permission_code, menu_type, route_path, sort_no, status) VALUES (?, 'System access', 'system:manage', 'BUTTON', '/system/users', 1, 'ACTIVE')", SYSTEM_MENU_ID);
+        jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 87031L, ADMIN_ROLE_ID, SYSTEM_MENU_ID);
+        jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 87041L, ADMIN_USER_ID, ADMIN_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 87042L, TARGET_USER_ID, INITIAL_ROLE_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        clearFixtures();
+    }
+
+    private void clearFixtures() {
+        jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id IN (?, ?, ?)", ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (?, ?)", ADMIN_USER_ID, TARGET_USER_ID);
+        jdbcTemplate.update("DELETE FROM sys_menu WHERE id = ?", SYSTEM_MENU_ID);
+        jdbcTemplate.update("DELETE FROM sys_role WHERE id IN (?, ?, ?)", ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", ADMIN_USER_ID, TARGET_USER_ID);
+    }
+
+    @Test
+    void administratorCanReplaceRolesAndInvalidateTargetSession() throws Exception {
+        String adminToken = tokenService.issueAccess(ADMIN_USER_ID, "system-access-admin", 0);
+        String targetToken = tokenService.issueAccess(TARGET_USER_ID, "system-access-target", 0);
+
+        mockMvc.perform(get("/system/roles").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").exists());
+
+        mockMvc.perform(put("/system/users/{id}/roles", TARGET_USER_ID)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleIds\":[\"" + REPLACEMENT_ROLE_ID + "\"],\"version\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roleIds[0]").value(Long.toString(REPLACEMENT_ROLE_ID)))
+                .andExpect(jsonPath("$.data.version").value("1"));
+
+        mockMvc.perform(get("/me").header("Authorization", "Bearer " + targetToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_SESSION_INVALID"));
+    }
+}

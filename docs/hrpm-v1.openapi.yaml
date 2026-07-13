@@ -28,6 +28,29 @@ paths:
     get:
       operationId: getCurrentUser
       responses: {'200': {$ref: '#/components/responses/Success'}}
+  /me/permissions:
+    get:
+      operationId: getCurrentUserPermissions
+      responses: {'200': {$ref: '#/components/responses/Success'}}
+  /me/menus:
+    get:
+      operationId: getCurrentUserMenus
+      responses: {'200': {$ref: '#/components/responses/Success'}}
+  /system/roles:
+    get:
+      operationId: listSystemRoles
+      responses: {'200': {$ref: '#/components/responses/Success'}, '403': {$ref: '#/components/responses/Error'}}
+  /system/users:
+    get:
+      operationId: listSystemUsers
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: {'200': {$ref: '#/components/responses/PageSuccess'}, '403': {$ref: '#/components/responses/Error'}}
+  /system/users/{id}/roles:
+    put:
+      operationId: replaceUserRoles
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateUserRolesRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
   /departments:
     get:
       operationId: listDepartmentTree
@@ -178,6 +201,7 @@ components:
         - {type: object, properties: {data: {type: object, required: [records, total, page, pageSize], properties: {records: {type: array, items: {}}, total: {type: integer}, page: {type: integer}, pageSize: {type: integer}}}}}
     LoginRequest: {type: object, required: [username, password], properties: {username: {type: string}, password: {type: string, format: password}}}
     RefreshRequest: {type: object, required: [refreshToken], properties: {refreshToken: {type: string}}}
+    UpdateUserRolesRequest: {type: object, required: [roleIds, version], properties: {roleIds: {type: array, items: {type: string}}, version: {type: string}}}
     ResourceCommand: {type: object, additionalProperties: true}
     VersionedResourceCommand: {allOf: [{$ref: '#/components/schemas/ResourceCommand'}, {type: object, required: [version], properties: {version: {type: string}}}]}
     WorkflowActionCommand: {type: object, required: [version, comment], properties: {version: {type: string}, comment: {type: string, minLength: 1}, transferToUserId: {type: string}}}

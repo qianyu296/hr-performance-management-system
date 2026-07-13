@@ -3,8 +3,10 @@ package com.hrpm.service;
 
 import com.hrpm.common.exception.AuthenticationFailedException;
 import com.hrpm.dto.LoginDTO;
+import com.hrpm.dto.RefreshTokenDTO;
 import com.hrpm.entity.UserAccount;
 import com.hrpm.mapper.UserAccountMapper;
+import com.hrpm.security.AuthenticatedUser;
 import com.hrpm.vo.LoginVO;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +33,30 @@ public class AuthenticationService {
             throw new AuthenticationFailedException();
         }
         userAccountMapper.updateLastLoginTime(account.id());
-        return new LoginVO(tokenService.issue(account.id(), account.username(), account.sessionVersion()), "Bearer");
+        return issueSession(account);
+    }
+
+    @Transactional(readOnly = true)
+    public LoginVO refresh(RefreshTokenDTO request) {
+        AuthenticatedUser tokenUser = tokenService.verifyRefresh(request.refreshToken());
+        UserAccount account = userAccountMapper.findById(tokenUser.userId());
+        if (account == null || !"ACTIVE".equals(account.status()) || account.sessionVersion() != tokenUser.sessionVersion()) {
+            throw new AuthenticationFailedException();
+        }
+        return issueSession(account);
+    }
+
+    @Transactional
+    public void logout(AuthenticatedUser user) {
+        if (userAccountMapper.incrementSessionVersion(user.userId(), user.sessionVersion()) != 1) {
+            throw new AuthenticationFailedException();
+        }
+    }
+
+    private LoginVO issueSession(UserAccount account) {
+        return new LoginVO(
+                tokenService.issueAccess(account.id(), account.username(), account.sessionVersion()),
+                tokenService.issueRefresh(account.id(), account.username(), account.sessionVersion()),
+                "Bearer");
     }
 }

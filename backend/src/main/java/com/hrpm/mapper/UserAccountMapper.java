@@ -26,4 +26,14 @@ public interface UserAccountMapper {
 
     @Update("UPDATE sys_user SET last_login_time = CURRENT_TIMESTAMP(3) WHERE id = #{id} AND deleted = 0")
     int updateLastLoginTime(@Param("id") long id);
+
+    @Update("""
+            UPDATE sys_user
+            SET session_version = session_version + 1
+            WHERE id = #{id}
+              AND session_version = #{sessionVersion}
+              AND status = 'ACTIVE'
+              AND deleted = 0
+            """)
+    int incrementSessionVersion(@Param("id") long id, @Param("sessionVersion") int sessionVersion);
 }

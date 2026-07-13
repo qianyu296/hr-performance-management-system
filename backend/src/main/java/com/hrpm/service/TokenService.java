@@ -18,29 +18,55 @@ public class TokenService {
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
 
     private final byte[] signingKey;
-    private final Duration ttl;
+    private final Duration accessTokenTtl;
+    private final Duration refreshTokenTtl;
     private final Clock clock;
 
     public TokenService(String signingKey, Duration ttl, Clock clock) {
+        this(signingKey, ttl, Duration.ofDays(14), clock);
+    }
+
+    public TokenService(String signingKey, Duration accessTokenTtl, Duration refreshTokenTtl, Clock clock) {
         if (signingKey == null || signingKey.length() < 32) {
             throw new IllegalArgumentException("JWT signing key must contain at least 32 characters");
         }
         this.signingKey = signingKey.getBytes(StandardCharsets.UTF_8);
-        this.ttl = ttl;
+        this.accessTokenTtl = accessTokenTtl;
+        this.refreshTokenTtl = refreshTokenTtl;
         this.clock = clock;
     }
 
     public String issue(long userId, String username, int sessionVersion) {
+        return issueAccess(userId, username, sessionVersion);
+    }
+
+    public String issueAccess(long userId, String username, int sessionVersion) {
+        return issue(TokenType.ACCESS, userId, username, sessionVersion, accessTokenTtl);
+    }
+
+    public String issueRefresh(long userId, String username, int sessionVersion) {
+        return issue(TokenType.REFRESH, userId, username, sessionVersion, refreshTokenTtl);
+    }
+
+    private String issue(TokenType tokenType, long userId, String username, int sessionVersion, Duration ttl) {
         if (userId <= 0 || username == null || username.isBlank() || username.contains("\n") || sessionVersion < 0) {
             throw new IllegalArgumentException("Invalid token subject");
         }
         long expiresAt = clock.instant().plus(ttl).getEpochSecond();
-        String payload = userId + "\n" + username + "\n" + sessionVersion + "\n" + expiresAt;
+        String payload = tokenType.name() + "\n" + userId + "\n" + username + "\n" + sessionVersion + "\n" + expiresAt;
         String encodedPayload = ENCODER.encodeToString(payload.getBytes(StandardCharsets.UTF_8));
         return encodedPayload + "." + ENCODER.encodeToString(sign(encodedPayload));
     }
 
     public AuthenticatedUser verify(String token) {
+        return verify(token, TokenType.ACCESS);
+    }
+
+    public AuthenticatedUser verifyRefresh(String token) {
+        return verify(token, TokenType.REFRESH);
+    }
+
+    private AuthenticatedUser verify(String token, TokenType expectedType) {
         if (token == null) {
             throw invalid();
         }
@@ -63,18 +89,19 @@ public class TokenService {
         } catch (IllegalArgumentException exception) {
             throw invalid();
         }
-        if (fields.length != 4 || fields[1].isBlank()) {
+        if (fields.length != 5 || fields[2].isBlank()) {
             throw invalid();
         }
         try {
-            long userId = Long.parseLong(fields[0]);
-            int sessionVersion = Integer.parseInt(fields[2]);
-            long expiresAt = Long.parseLong(fields[3]);
-            if (userId <= 0 || sessionVersion < 0 || clock.instant().getEpochSecond() >= expiresAt) {
+            TokenType tokenType = TokenType.valueOf(fields[0]);
+            long userId = Long.parseLong(fields[1]);
+            int sessionVersion = Integer.parseInt(fields[3]);
+            long expiresAt = Long.parseLong(fields[4]);
+            if (tokenType != expectedType || userId <= 0 || sessionVersion < 0 || clock.instant().getEpochSecond() >= expiresAt) {
                 throw invalid();
             }
-            return new AuthenticatedUser(userId, fields[1], sessionVersion);
-        } catch (NumberFormatException exception) {
+            return new AuthenticatedUser(userId, fields[2], sessionVersion);
+        } catch (IllegalArgumentException exception) {
             throw invalid();
         }
     }
@@ -91,5 +118,10 @@ public class TokenService {
 
     private TokenValidationException invalid() {
         return new TokenValidationException("Session token is invalid or expired");
+    }
+
+    private enum TokenType {
+        ACCESS,
+        REFRESH
     }
 }

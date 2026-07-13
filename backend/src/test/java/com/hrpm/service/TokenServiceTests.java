@@ -47,4 +47,12 @@ class TokenServiceTests {
 
         assertThrows(TokenValidationException.class, () -> shortLived.verify(token));
     }
+
+    @Test
+    void rejectsRefreshTokenForBusinessRequest() {
+        String refreshToken = tokenService.issueRefresh(42L, "alice", 3);
+
+        assertThrows(TokenValidationException.class, () -> tokenService.verify(refreshToken));
+        assertEquals(42L, tokenService.verifyRefresh(refreshToken).userId());
+    }
 }

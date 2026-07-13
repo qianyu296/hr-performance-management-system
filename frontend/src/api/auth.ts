@@ -14,6 +14,7 @@ export interface LoginPayload {
 
 export interface LoginResult {
   accessToken: string
+  refreshToken: string
   tokenType: string
 }
 
@@ -30,4 +31,18 @@ export async function login(payload: LoginPayload) {
 export async function fetchCurrentUser() {
   const response = await http.get<ApiResponse<CurrentUser>>('/me')
   return response.data.data
+}
+
+export async function fetchCurrentUserPermissions() {
+  const response = await http.get<ApiResponse<string[]>>('/me/permissions')
+  return response.data.data
+}
+
+export async function refreshSession(refreshToken: string) {
+  const response = await http.post<ApiResponse<LoginResult>>('/auth/refresh', { refreshToken })
+  return response.data.data
+}
+
+export async function logout(accessToken: string) {
+  await http.post('/auth/logout', undefined, { headers: { Authorization: `Bearer ${accessToken}` } })
 }

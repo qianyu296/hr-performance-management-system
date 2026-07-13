@@ -5,6 +5,7 @@ import LeaveManagementView from '@/views/LeaveManagementView.vue'
 import LoginView from '@/views/LoginView.vue'
 import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import OrganizationEmployeesView from '@/views/OrganizationEmployeesView.vue'
+import SystemAccessView from '@/views/SystemAccessView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { navigationItems } from './navigation'
 
@@ -13,6 +14,7 @@ const routedComponents: Record<string, unknown> = {
   '/org/employees': OrganizationEmployeesView,
   '/attendance/leave': LeaveManagementView,
   '/workflow/tasks': WorkflowTasksView,
+  '/system/users': SystemAccessView,
 }
 
 const router = createRouter({
@@ -24,7 +26,7 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
-      meta: { title: '工作台', description: '待办、通知和关键工作概览', permission: 'dashboard:view' },
+      meta: { title: '工作台', description: '待办、通知和关键工作概览' },
     },
     ...navigationItems
       .filter((item) => item.path !== '/dashboard')
@@ -32,7 +34,7 @@ const router = createRouter({
         path: item.path,
         name: item.path.replaceAll('/', '-').slice(1),
         component: routedComponents[item.path] ?? DomainView,
-        meta: { title: item.title, description: item.description },
+        meta: { title: item.title, description: item.description, permission: item.permission },
       })),
     { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
   ],
@@ -47,6 +49,7 @@ router.beforeEach(async (to) => {
   if (!authStore.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
   try {
     await authStore.loadCurrentUser()
+    if (!authStore.can(typeof to.meta.permission === 'string' ? to.meta.permission : undefined)) return '/dashboard'
     return true
   } catch {
     return { path: '/login', query: { redirect: to.fullPath } }
