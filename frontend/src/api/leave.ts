@@ -19,6 +19,7 @@ export interface LeaveRequestItem {
   endTime: string
   durationHours: number
   status: string
+  workflowInstanceId: string | null
   version: number
 }
 

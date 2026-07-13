@@ -418,6 +418,118 @@ class LeaveRequestApiIntegrationTests {
     }
 
     @Test
+    void workflowParticipantsCanReadInstanceHistoryButOtherUsersCannot() throws Exception {
+        long requestId = seedSubmittedLeaveRequest(94011L, "LR94011", "2026-07-23T09:00:00Z", "2026-07-23T17:00:00Z");
+        long instanceId = findInstanceId(requestId);
+
+        mockMvc.perform(get("/workflow/tasks/instances/{id}", instanceId).header("Authorization", bearerToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.data.history[0].action").value("SUBMIT"));
+
+        jdbcTemplate.update("""
+                INSERT INTO sys_user (id, username, password_hash, status, session_version)
+                VALUES (?, 'workflow-outsider', ?, 'ACTIVE', 1)
+                """, 90002L, new BCryptPasswordEncoder().encode("correct-password"));
+        mockMvc.perform(get("/workflow/tasks/instances/{id}", instanceId)
+                        .header("Authorization", "Bearer " + tokenService.issue(90002L, "workflow-outsider", 1)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    void approverCanReturnLeaveAndOwnerCanResubmitSameWorkflowInstance() throws Exception {
+        long requestId = seedSubmittedLeaveRequest(94012L, "LR94012", "2026-07-24T09:00:00Z", "2026-07-24T17:00:00Z");
+        long taskId = findTaskId(requestId);
+        long instanceId = findInstanceId(requestId);
+
+        mockMvc.perform(post("/workflow/tasks/{id}/return", taskId)
+                        .header("Authorization", bearerToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\",\"comment\":\"please add handover details\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("RETURNED"));
+        org.junit.jupiter.api.Assertions.assertEquals("DRAFT",
+                jdbcTemplate.queryForObject("SELECT status FROM att_leave_request WHERE id = ?", String.class, requestId));
+
+        mockMvc.perform(post("/leave-requests/{id}/submit", requestId)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-resubmit-returned-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"2\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(instanceId, findInstanceId(requestId));
+        org.junit.jupiter.api.Assertions.assertEquals(1,
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE business_id = ?", Integer.class, requestId));
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM wf_task WHERE instance_id = ? AND status = 'PENDING'", Integer.class, instanceId));
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM wf_action_log WHERE instance_id = ? AND action = 'RESUBMIT'", Integer.class, instanceId));
+    }
+
+    @Test
+    void ownerCanWithdrawPendingWorkflowAndRestoreLeaveDraft() throws Exception {
+        long requestId = seedSubmittedLeaveRequest(94013L, "LR94013", "2026-07-25T09:00:00Z", "2026-07-25T17:00:00Z");
+        long instanceId = findInstanceId(requestId);
+
+        mockMvc.perform(post("/workflow/tasks/instances/{id}/withdraw", instanceId)
+                        .header("Authorization", bearerToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\",\"comment\":\"request withdrawn by applicant\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("WITHDRAWN"));
+
+        org.junit.jupiter.api.Assertions.assertEquals("DRAFT",
+                jdbcTemplate.queryForObject("SELECT status FROM att_leave_request WHERE id = ?", String.class, requestId));
+        org.junit.jupiter.api.Assertions.assertEquals("WITHDRAWN",
+                jdbcTemplate.queryForObject("SELECT status FROM wf_instance WHERE id = ?", String.class, instanceId));
+        org.junit.jupiter.api.Assertions.assertEquals("WITHDRAWN",
+                jdbcTemplate.queryForObject("SELECT status FROM wf_task WHERE instance_id = ?", String.class, instanceId));
+    }
+
+    @Test
+    void workflowIntervenerCanTransferPendingTask() throws Exception {
+        grantLeaveSubmitPermission();
+        seedLeaveWorkflowTemplate();
+        jdbcTemplate.update("UPDATE wf_template_node SET approver_rule = JSON_OBJECT('userId', 9000001) WHERE id = ?", 95003L);
+        jdbcTemplate.update("""
+                INSERT INTO sys_user (id, username, password_hash, status, session_version)
+                VALUES (?, 'transferred-approver', ?, 'ACTIVE', 1)
+                """, 90002L, new BCryptPasswordEncoder().encode("correct-password"));
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
+                VALUES (?, ?, 'ANNUAL', 2026, 16.00)
+                """, 93001L, 91001L);
+        long requestId = 94014L;
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_request (id, request_no, employee_id, leave_type_id, start_time, end_time,
+                    duration_hours, reason, status, organization_snapshot)
+                VALUES (?, 'LR94014', ?, ?, ?, ?, 8.00, 'Annual leave', 'DRAFT', '{}')
+                """, requestId, 91001L, 92001L, Instant.parse("2026-07-26T09:00:00Z"), Instant.parse("2026-07-26T17:00:00Z"));
+        mockMvc.perform(post("/leave-requests/{id}/submit", requestId)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-submit-transfer-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isOk());
+        long taskId = findTaskId(requestId);
+
+        mockMvc.perform(post("/workflow/tasks/{id}/transfer", taskId)
+                        .header("Authorization", "Bearer " + tokenService.issue(9000001L, "admin", 0))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\",\"comment\":\"reassign for coverage\",\"transferToUserId\":90002}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+
+        org.junit.jupiter.api.Assertions.assertEquals("TRANSFERRED",
+                jdbcTemplate.queryForObject("SELECT status FROM wf_task WHERE id = ?", String.class, taskId));
+        org.junit.jupiter.api.Assertions.assertEquals(90002L, jdbcTemplate.queryForObject(
+                "SELECT assignee_user_id FROM wf_task WHERE instance_id = ? AND status = 'PENDING'", Long.class, findInstanceId(requestId)));
+    }
+
+    @Test
     void ownerCanCancelApprovedLeaveExactlyOnce() throws Exception {
         grantLeaveSubmitPermission();
         seedLeaveWorkflowTemplate();
@@ -482,6 +594,10 @@ class LeaveRequestApiIntegrationTests {
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM wf_task WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)",
                 Long.class, requestId);
+    }
+
+    private long findInstanceId(long requestId) {
+        return jdbcTemplate.queryForObject("SELECT workflow_instance_id FROM att_leave_request WHERE id = ?", Long.class, requestId);
     }
 
     private void seedLeaveWorkflowTemplate() {

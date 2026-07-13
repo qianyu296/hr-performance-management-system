@@ -16,5 +16,6 @@ public record LeaveRequestSubmission(
         Instant endTime,
         BigDecimal durationHours,
         String status,
+        Long workflowInstanceId,
         int version) {
 }

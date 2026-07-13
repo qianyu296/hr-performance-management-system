@@ -13,6 +13,7 @@ import {
   type LeaveRequestItem,
   type LeaveTypeOption,
 } from '@/api/leave'
+import { fetchWorkflowInstance, withdrawWorkflowInstance } from '@/api/workflow'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -95,6 +96,15 @@ async function cancelApproved(row: LeaveRequestItem) {
   await loadData()
 }
 
+async function withdrawPending(row: LeaveRequestItem) {
+  if (!row.workflowInstanceId) return
+  await ElMessageBox.confirm('确认撤回这条审批中的请假申请吗？撤回后会恢复为草稿。', '撤回请假', { type: 'warning' })
+  const instance = await fetchWorkflowInstance(row.workflowInstanceId)
+  await withdrawWorkflowInstance(row.workflowInstanceId, instance.version, 'Request withdrawn by applicant')
+  ElMessage.success('请假申请已撤回')
+  await loadData()
+}
+
 onMounted(loadData)
 </script>
 
@@ -124,9 +134,10 @@ onMounted(loadData)
       <el-table-column label="状态" width="110">
         <template #default="{ row }"><el-tag>{{ statusLabel(row.status) }}</el-tag></template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.status === 'DRAFT'" text type="primary" @click="submitDraft(row)">提交</el-button>
+          <el-button v-if="row.status === 'IN_PROGRESS'" text type="warning" @click="withdrawPending(row)">撤回</el-button>
           <el-button v-if="row.status === 'APPROVED'" text type="danger" @click="cancelApproved(row)">撤销</el-button>
         </template>
       </el-table-column>

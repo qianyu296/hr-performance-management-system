@@ -31,7 +31,7 @@ public interface LeaveRequestMapper {
             SELECT r.id, r.employee_id AS employeeId, e.department_id AS departmentId, e.employment_status AS employmentStatus,
                    r.leave_type_id AS leaveTypeId, t.code AS balanceType, t.deduct_balance AS deductBalance,
                    t.status AS leaveTypeStatus, r.start_time AS startTime, r.end_time AS endTime,
-                   r.duration_hours AS durationHours, r.status, r.version
+                   r.duration_hours AS durationHours, r.status, r.workflow_instance_id AS workflowInstanceId, r.version
             FROM att_leave_request r
             JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
             JOIN att_leave_type t ON t.id = r.leave_type_id AND t.deleted = 0
@@ -41,7 +41,8 @@ public interface LeaveRequestMapper {
 
     @Select("""
             SELECT r.id, r.request_no AS requestNo, t.name AS leaveTypeName, r.start_time AS startTime,
-                   r.end_time AS endTime, r.duration_hours AS durationHours, r.status, r.version
+                   r.end_time AS endTime, r.duration_hours AS durationHours, r.status,
+                   r.workflow_instance_id AS workflowInstanceId, r.version
             FROM att_leave_request r
             JOIN att_leave_type t ON t.id = r.leave_type_id AND t.deleted = 0
             WHERE r.employee_id = #{employeeId} AND r.deleted = 0
@@ -80,6 +81,9 @@ public interface LeaveRequestMapper {
 
     @Update("UPDATE att_leave_request SET status = 'REJECTED', version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS' AND version = #{version}")
     int rejectRequest(@Param("id") long id, @Param("version") int version);
+
+    @Update("UPDATE att_leave_request SET status = 'DRAFT', version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS' AND version = #{version}")
+    int returnRequestToDraft(@Param("id") long id, @Param("version") int version);
 
     @Update("UPDATE att_leave_balance SET available_hours = #{availableHours}, version = version + 1 WHERE id = #{id} AND version = #{version}")
     int updateBalance(@Param("id") long id, @Param("version") int version, @Param("availableHours") BigDecimal availableHours);

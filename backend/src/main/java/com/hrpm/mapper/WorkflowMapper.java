@@ -3,6 +3,8 @@ package com.hrpm.mapper;
 
 import com.hrpm.entity.WorkflowTask;
 import com.hrpm.entity.WorkflowTaskListRow;
+import com.hrpm.entity.WorkflowInstance;
+import com.hrpm.entity.WorkflowActionLogRow;
 import com.hrpm.entity.WorkflowTemplate;
 import com.hrpm.entity.WorkflowTemplateDefinition;
 import com.hrpm.entity.WorkflowTemplateNode;
@@ -109,7 +111,7 @@ public interface WorkflowMapper {
     @Select("""
             SELECT t.id, t.instance_id AS instanceId, t.node_no AS nodeNo, t.node_snapshot AS nodeSnapshot,
                    t.assignee_user_id AS assigneeUserId, t.status, t.version,
-                   i.business_id AS businessId
+                   i.business_type AS businessType, i.business_id AS businessId
             FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0
             WHERE t.id = #{id} AND t.deleted = 0
             """)
@@ -121,6 +123,36 @@ public interface WorkflowMapper {
             WHERE id = #{id} AND deleted = 0
             """)
     String findInstanceSnapshot(@Param("id") long id);
+
+    @Select("""
+            SELECT id, business_type AS businessType, business_id AS businessId, initiator_user_id AS initiatorUserId,
+                   status, current_node_no AS currentNodeNo, version
+            FROM wf_instance
+            WHERE id = #{id} AND deleted = 0
+            """)
+    WorkflowInstance findInstance(@Param("id") long id);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM wf_instance i
+            WHERE i.id = #{instanceId} AND i.deleted = 0 AND (
+                i.initiator_user_id = #{userId}
+                OR EXISTS (SELECT 1 FROM wf_task t WHERE t.instance_id = i.id AND t.assignee_user_id = #{userId} AND t.deleted = 0)
+                OR EXISTS (SELECT 1 FROM wf_action_log l WHERE l.instance_id = i.id AND l.actor_user_id = #{userId})
+            )
+            """)
+    int countInstanceAccess(@Param("instanceId") long instanceId, @Param("userId") long userId);
+
+    @Select("""
+            SELECT l.id, l.task_id AS taskId, t.node_no AS nodeNo, l.actor_user_id AS actorUserId,
+                   u.username AS actorUsername, l.action, l.comment, l.created_time AS createdTime
+            FROM wf_action_log l
+            JOIN sys_user u ON u.id = l.actor_user_id AND u.deleted = 0
+            LEFT JOIN wf_task t ON t.id = l.task_id
+            WHERE l.instance_id = #{instanceId}
+            ORDER BY l.created_time, l.id
+            """)
+    List<WorkflowActionLogRow> listActionLogs(@Param("instanceId") long instanceId);
 
     @Select("""
             SELECT id
@@ -162,8 +194,20 @@ public interface WorkflowMapper {
     @Update("UPDATE wf_instance SET current_node_no = #{nodeNo}, version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS'")
     int advanceInstance(@Param("id") long id, @Param("nodeNo") int nodeNo);
 
+    @Update("UPDATE wf_task SET status = 'RETURNED', version = version + 1 WHERE id = #{id} AND assignee_user_id = #{userId} AND status = 'PENDING' AND version = #{version}")
+    int returnTask(@Param("id") long id, @Param("userId") long userId, @Param("version") int version);
+
+    @Update("UPDATE wf_task SET status = 'TRANSFERRED', version = version + 1 WHERE id = #{id} AND status = 'PENDING' AND version = #{version}")
+    int transferTask(@Param("id") long id, @Param("version") int version);
+
+    @Update("UPDATE wf_task SET status = 'WITHDRAWN', version = version + 1 WHERE instance_id = #{instanceId} AND status = 'PENDING' AND deleted = 0")
+    int withdrawPendingTasks(@Param("instanceId") long instanceId);
+
+    @Select("SELECT id FROM wf_task WHERE instance_id = #{instanceId} AND status = 'PENDING' AND deleted = 0 ORDER BY id LIMIT 1")
+    Long findPendingTaskId(@Param("instanceId") long instanceId);
+
     @Select("""
-            SELECT t.id, i.business_type AS businessType, i.business_id AS businessId,
+            SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
                    r.request_no AS requestNo, e.name AS applicantName, lt.name AS leaveTypeName,
                    r.start_time AS startTime, r.end_time AS endTime, r.duration_hours AS durationHours,
                    t.status, t.version
@@ -189,7 +233,16 @@ public interface WorkflowMapper {
     @Update("UPDATE wf_instance SET status = 'REJECTED', current_node_no = NULL, version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS'")
     int rejectInstance(@Param("id") long id);
 
+    @Update("UPDATE wf_instance SET status = 'RETURNED', current_node_no = NULL, version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS'")
+    int returnInstance(@Param("id") long id);
+
+    @Update("UPDATE wf_instance SET status = 'WITHDRAWN', current_node_no = NULL, version = version + 1 WHERE id = #{id} AND initiator_user_id = #{userId} AND status = 'IN_PROGRESS' AND version = #{version}")
+    int withdrawInstance(@Param("id") long id, @Param("userId") long userId, @Param("version") int version);
+
+    @Update("UPDATE wf_instance SET status = 'IN_PROGRESS', current_node_no = #{nodeNo}, version = version + 1 WHERE id = #{id} AND status = 'RETURNED'")
+    int resumeReturnedInstance(@Param("id") long id, @Param("nodeNo") int nodeNo);
+
     @Insert("INSERT INTO wf_action_log (id, instance_id, task_id, actor_user_id, action, comment) VALUES (#{id}, #{instanceId}, #{taskId}, #{actorUserId}, #{action}, #{comment})")
-    int insertActionLog(@Param("id") long id, @Param("instanceId") long instanceId, @Param("taskId") long taskId,
+    int insertActionLog(@Param("id") long id, @Param("instanceId") long instanceId, @Param("taskId") Long taskId,
             @Param("actorUserId") long actorUserId, @Param("action") String action, @Param("comment") String comment);
 }

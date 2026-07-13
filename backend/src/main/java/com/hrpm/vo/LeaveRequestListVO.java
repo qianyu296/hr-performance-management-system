@@ -11,5 +11,6 @@ public record LeaveRequestListVO(
         Instant endTime,
         BigDecimal durationHours,
         String status,
+        String workflowInstanceId,
         int version) {
 }

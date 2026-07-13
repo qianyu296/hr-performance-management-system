@@ -15,8 +15,10 @@ public record LeaveRequestListRow(
         Instant endTime,
         BigDecimal durationHours,
         String status,
+        Long workflowInstanceId,
         int version) {
     public LeaveRequestListVO toItem() {
-        return new LeaveRequestListVO(Long.toString(id), requestNo, leaveTypeName, startTime, endTime, durationHours, status, version);
+        return new LeaveRequestListVO(Long.toString(id), requestNo, leaveTypeName, startTime, endTime, durationHours, status,
+                workflowInstanceId == null ? null : Long.toString(workflowInstanceId), version);
     }
 }

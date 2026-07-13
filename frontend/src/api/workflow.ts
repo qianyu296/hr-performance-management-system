@@ -6,6 +6,7 @@ interface ApiResponse<T> {
 
 export interface WorkflowTaskItem {
   id: string
+  instanceId: string
   businessType: string
   businessId: string
   requestNo: string
@@ -16,6 +17,28 @@ export interface WorkflowTaskItem {
   durationHours: number
   status: string
   version: number
+}
+
+export interface WorkflowHistoryItem {
+  id: string
+  taskId: string | null
+  nodeNo: number | null
+  actorUserId: string
+  actorUsername: string
+  action: string
+  comment: string
+  createdTime: string
+}
+
+export interface WorkflowInstanceDetail {
+  id: string
+  businessType: string
+  businessId: string
+  initiatorUserId: string
+  status: string
+  currentNodeNo: number | null
+  version: string
+  history: WorkflowHistoryItem[]
 }
 
 export type WorkflowNodeType = 'SPECIFIC_USER' | 'DIRECT_MANAGER' | 'DEPARTMENT_LEADER' | 'HR'
@@ -63,6 +86,26 @@ export async function approveWorkflowTask(id: string, version: number, comment: 
 
 export async function rejectWorkflowTask(id: string, version: number, comment: string) {
   const response = await http.post<ApiResponse<{ status: string }>>(`/workflow/tasks/${id}/reject`, { version, comment })
+  return response.data.data
+}
+
+export async function returnWorkflowTask(id: string, version: number, comment: string) {
+  const response = await http.post<ApiResponse<{ status: string }>>(`/workflow/tasks/${id}/return`, { version, comment })
+  return response.data.data
+}
+
+export async function transferWorkflowTask(id: string, version: number, comment: string, transferToUserId: number) {
+  const response = await http.post<ApiResponse<{ status: string }>>(`/workflow/tasks/${id}/transfer`, { version, comment, transferToUserId })
+  return response.data.data
+}
+
+export async function fetchWorkflowInstance(id: string) {
+  const response = await http.get<ApiResponse<WorkflowInstanceDetail>>(`/workflow/tasks/instances/${id}`)
+  return response.data.data
+}
+
+export async function withdrawWorkflowInstance(id: string, version: string, comment: string) {
+  const response = await http.post<ApiResponse<{ status: string }>>(`/workflow/tasks/instances/${id}/withdraw`, { version, comment })
   return response.data.data
 }
 

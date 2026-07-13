@@ -5,6 +5,7 @@ import java.time.Instant;
 
 public record WorkflowTaskListVO(
         String id,
+        String instanceId,
         String businessType,
         String businessId,
         String requestNo,

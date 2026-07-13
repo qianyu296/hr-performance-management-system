@@ -7,6 +7,7 @@ import com.hrpm.entity.LeaveRequestSubmission;
 import com.hrpm.entity.WorkflowTemplate;
 import com.hrpm.entity.WorkflowTemplateNode;
 import com.hrpm.entity.WorkflowInstanceSnapshot;
+import com.hrpm.entity.WorkflowInstance;
 import com.hrpm.entity.WorkflowNodeSnapshot;
 import com.hrpm.mapper.LeaveRequestMapper;
 import com.hrpm.mapper.WorkflowMapper;
@@ -39,6 +40,13 @@ public class LeaveWorkflowService {
     @Transactional
     public long submit(long userId, LeaveRequestSubmission request) {
         validate(request);
+        if (request.workflowInstanceId() != null) {
+            WorkflowInstance instance = workflowMapper.findInstance(request.workflowInstanceId());
+            if (instance != null && "RETURNED".equals(instance.status()) && "LEAVE".equals(instance.businessType())
+                    && instance.businessId() == request.id() && instance.initiatorUserId() == userId) {
+                return resumeReturnedInstance(userId, request, instance);
+            }
+        }
         WorkflowTemplate template = workflowMapper.findLeaveTemplate(request.departmentId());
         if (template == null) {
             throw new WorkflowTemplateMissingException();
@@ -60,7 +68,25 @@ public class LeaveWorkflowService {
         if (leaveRequestMapper.markSubmitted(request.id(), request.employeeId(), request.version(), instanceId) != 1) {
             throw new IllegalStateException("Leave request changed before submission");
         }
+        workflowMapper.insertActionLog(idGenerator.nextId(), instanceId, null, userId, "SUBMIT", "Leave request submitted");
         return instanceId;
+    }
+
+    private long resumeReturnedInstance(long userId, LeaveRequestSubmission request, WorkflowInstance instance) {
+        WorkflowInstanceSnapshot snapshot = parseSnapshot(workflowMapper.findInstanceSnapshot(instance.id()));
+        if (snapshot.nodes().isEmpty()) {
+            throw new WorkflowTemplateMissingException();
+        }
+        WorkflowNodeSnapshot firstNode = snapshot.nodes().get(0);
+        if (workflowMapper.resumeReturnedInstance(instance.id(), firstNode.nodeNo()) != 1) {
+            throw new IllegalStateException("Workflow instance changed before resubmission");
+        }
+        workflowMapper.insertTask(idGenerator.nextId(), instance.id(), firstNode.nodeNo(), serialize(firstNode), firstNode.assigneeUserId());
+        if (leaveRequestMapper.markSubmitted(request.id(), request.employeeId(), request.version(), instance.id()) != 1) {
+            throw new IllegalStateException("Leave request changed before resubmission");
+        }
+        workflowMapper.insertActionLog(idGenerator.nextId(), instance.id(), null, userId, "RESUBMIT", "Leave request resubmitted");
+        return instance.id();
     }
 
     private void validate(LeaveRequestSubmission request) {
@@ -98,6 +124,14 @@ public class LeaveWorkflowService {
             return objectMapper.writeValueAsString(value);
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create workflow snapshot", exception);
+        }
+    }
+
+    private WorkflowInstanceSnapshot parseSnapshot(String value) {
+        try {
+            return objectMapper.readValue(value, WorkflowInstanceSnapshot.class);
+        } catch (Exception exception) {
+            throw new WorkflowTemplateMissingException();
         }
     }
 }
