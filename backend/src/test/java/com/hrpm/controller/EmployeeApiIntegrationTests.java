@@ -34,8 +34,14 @@ class EmployeeApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM hr_department WHERE code='EMP_TEST_DEPT'");
         jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id=99001");
         jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id=99002");
+        jdbcTemplate.update("DELETE FROM sys_role_data_scope WHERE role_id=99002");
         jdbcTemplate.update("DELETE FROM sys_role WHERE id=99002");
         jdbcTemplate.update("DELETE FROM sys_user WHERE id=99001");
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id=99011");
+        jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id=99012");
+        jdbcTemplate.update("DELETE FROM sys_role_data_scope WHERE role_id=99012");
+        jdbcTemplate.update("DELETE FROM sys_role WHERE id=99012");
+        jdbcTemplate.update("DELETE FROM sys_user WHERE id=99011");
         jdbcTemplate.update("INSERT INTO hr_department (id, code, name, path, effective_date, status) VALUES (99101,'EMP_TEST_DEPT','Test Department','/99101/','2026-01-01','ACTIVE')");
         jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status) VALUES (99102,'EMP_TEST_POSITION','Test Position','ACTIVE')");
         jdbcTemplate.update("INSERT INTO hr_rank (id, code, name, rank_order, status) VALUES (99103,'EMP_TEST_RANK','P5',5,'ACTIVE')");
@@ -114,6 +120,29 @@ class EmployeeApiIntegrationTests {
                 .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
     }
 
+    @Test
+    void selfScopeCannotEnumerateOrReadAnotherEmployeeById() throws Exception {
+        seedEmployee(99210L, "EMP_TEST_SELF", "Self User", "FORMAL", 0);
+        seedEmployee(99211L, "EMP_TEST_OTHER", "Other User", "FORMAL", 0);
+        jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version) VALUES (99011, 'self-scope-user', ?, 99210, 'ACTIVE', 1)", new BCryptPasswordEncoder().encode("password"));
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (99012, 'EMP_TEST_SELF', 'Self scope', 'ACTIVE')");
+        jdbcTemplate.update("INSERT INTO sys_user_role (id,user_id,role_id) VALUES (99013,99011,99012)");
+        jdbcTemplate.update("INSERT INTO sys_role_data_scope (id,role_id,scope_type) VALUES (99014,99012,'SELF')");
+        jdbcTemplate.update("INSERT INTO sys_role_menu (id,role_id,menu_id) SELECT 99015,99012,id FROM sys_menu WHERE permission_code='org:read' AND deleted=0 LIMIT 1");
+
+        String selfToken = "Bearer " + tokenService.issue(99011L, "self-scope-user", 1);
+        mockMvc.perform(get("/employees").header("Authorization", selfToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].id").value("99210"));
+        mockMvc.perform(get("/employees/99211").header("Authorization", selfToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+        mockMvc.perform(get("/employees/99210").header("Authorization", selfToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("Self User"));
+    }
+
     private void seedEmployee(long id, String no, String name, String status, int version) {
         jdbcTemplate.update("""
                 INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, rank_id, employment_status, hire_date, version)
@@ -124,6 +153,7 @@ class EmployeeApiIntegrationTests {
     private void grantPermissions() {
         jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (99002,'EMP_TEST_ORG','Employee Test Org','ACTIVE')");
         jdbcTemplate.update("INSERT INTO sys_user_role (id,user_id,role_id) VALUES (99005,99001,99002)");
+        jdbcTemplate.update("INSERT INTO sys_role_data_scope (id,role_id,scope_type) VALUES (99008,99002,'ALL')");
         jdbcTemplate.update("INSERT INTO sys_menu (id,name,permission_code,menu_type,status) VALUES (99903,'Org read','org:read','BUTTON','ACTIVE') ON DUPLICATE KEY UPDATE name=VALUES(name)");
         jdbcTemplate.update("INSERT INTO sys_menu (id,name,permission_code,menu_type,status) VALUES (99904,'Org manage','org:manage','BUTTON','ACTIVE') ON DUPLICATE KEY UPDATE name=VALUES(name)");
         Long readId = jdbcTemplate.queryForObject("SELECT id FROM sys_menu WHERE permission_code='org:read' AND deleted=0", Long.class);

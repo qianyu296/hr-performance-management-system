@@ -30,13 +30,17 @@ public interface EmployeeMapper {
             <if test='departmentId != null'>AND e.department_id=#{departmentId}</if>
             <if test='positionId != null'>AND e.position_id=#{positionId}</if>
             <if test='employmentStatus != null and employmentStatus != ""'>AND e.employment_status=#{employmentStatus}</if>
-            <if test='scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'>AND e.department_id IN <foreach collection='scopeDepartmentIds' item='scopeId' open='(' separator=',' close=')'>#{scopeId}</foreach></if>
+            <if test='scopeEmployeeIds != null and scopeEmployeeIds.size() > 0 or scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'>AND (
+              <if test='scopeEmployeeIds != null and scopeEmployeeIds.size() > 0'>e.id IN <foreach collection='scopeEmployeeIds' item='scopeId' open='(' separator=',' close=')'>#{scopeId}</foreach></if>
+              <if test='scopeEmployeeIds != null and scopeEmployeeIds.size() > 0 and scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'> OR </if>
+              <if test='scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'>e.department_id IN <foreach collection='scopeDepartmentIds' item='scopeId' open='(' separator=',' close=')'>#{scopeId}</foreach></if>
+            )</if>
             ORDER BY e.employee_no LIMIT #{limit} OFFSET #{offset}
             </script>
             """)
     List<Employee> findPage(@Param("keyword") String keyword, @Param("departmentId") Long departmentId,
                             @Param("positionId") Long positionId, @Param("employmentStatus") String employmentStatus,
-                            @Param("scopeDepartmentIds") List<Long> scopeDepartmentIds,
+                            @Param("scopeEmployeeIds") List<Long> scopeEmployeeIds, @Param("scopeDepartmentIds") List<Long> scopeDepartmentIds,
                             @Param("offset") int offset, @Param("limit") int limit);
 
     @Select("""
@@ -45,15 +49,22 @@ public interface EmployeeMapper {
             <if test='departmentId != null'>AND e.department_id=#{departmentId}</if>
             <if test='positionId != null'>AND e.position_id=#{positionId}</if>
             <if test='employmentStatus != null and employmentStatus != ""'>AND e.employment_status=#{employmentStatus}</if>
-            <if test='scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'>AND e.department_id IN <foreach collection='scopeDepartmentIds' item='scopeId' open='(' separator=',' close=')'>#{scopeId}</foreach></if>
+            <if test='scopeEmployeeIds != null and scopeEmployeeIds.size() > 0 or scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'>AND (
+              <if test='scopeEmployeeIds != null and scopeEmployeeIds.size() > 0'>e.id IN <foreach collection='scopeEmployeeIds' item='scopeId' open='(' separator=',' close=')'>#{scopeId}</foreach></if>
+              <if test='scopeEmployeeIds != null and scopeEmployeeIds.size() > 0 and scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'> OR </if>
+              <if test='scopeDepartmentIds != null and scopeDepartmentIds.size() > 0'>e.department_id IN <foreach collection='scopeDepartmentIds' item='scopeId' open='(' separator=',' close=')'>#{scopeId}</foreach></if>
+            )</if>
             </script>
             """)
     long count(@Param("keyword") String keyword, @Param("departmentId") Long departmentId,
                @Param("positionId") Long positionId, @Param("employmentStatus") String employmentStatus,
-               @Param("scopeDepartmentIds") List<Long> scopeDepartmentIds);
+               @Param("scopeEmployeeIds") List<Long> scopeEmployeeIds, @Param("scopeDepartmentIds") List<Long> scopeDepartmentIds);
 
     @Select("SELECT " + COLUMNS + " FROM hr_employee e JOIN hr_department d ON d.id=e.department_id AND d.deleted=0 JOIN hr_position p ON p.id=e.position_id AND p.deleted=0 LEFT JOIN hr_rank r ON r.id=e.rank_id AND r.deleted=0 LEFT JOIN hr_employee m ON m.id=e.manager_employee_id AND m.deleted=0 WHERE e.id=#{id} AND e.deleted=0")
     Employee findById(@Param("id") long id);
+
+    @Select("SELECT id FROM hr_employee WHERE manager_employee_id=#{employeeId} AND deleted=0")
+    List<Long> findDirectReportIds(@Param("employeeId") long employeeId);
 
     @Select("SELECT COUNT(*) FROM hr_employee WHERE employee_no=#{employeeNo} AND deleted=0")
     int countByEmployeeNo(@Param("employeeNo") String employeeNo);

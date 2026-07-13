@@ -17,28 +17,45 @@ public class EmployeeService {
     private final DepartmentMapper departmentMapper;
     private final PositionMapper positionMapper;
     private final RankMapper rankMapper;
+    private final EmployeeDataScopeResolver dataScopeResolver;
     private final IdGenerator idGenerator;
 
     public EmployeeService(EmployeeMapper employeeMapper, DepartmentMapper departmentMapper,
-                           PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator) {
+                           PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator, EmployeeDataScopeResolver dataScopeResolver) {
         this.employeeMapper = employeeMapper;
         this.departmentMapper = departmentMapper;
         this.positionMapper = positionMapper;
         this.rankMapper = rankMapper;
         this.idGenerator = idGenerator;
+        this.dataScopeResolver = dataScopeResolver;
     }
 
-    public PageVO<EmployeeListVO> list(int page, int pageSize, String keyword, Long departmentId,
+    public PageVO<EmployeeListVO> list(long userId, int page, int pageSize, String keyword, Long departmentId,
                                        Long positionId, String employmentStatus) {
         if (page < 1 || pageSize < 1 || pageSize > 100) throw new OrganizationReferenceInvalidException("Invalid pagination");
+        EmployeeDataScope scope = dataScopeResolver.resolve(userId);
+        if (scope.isEmpty()) return new PageVO<>(List.of(), 0, page, pageSize);
         List<EmployeeListVO> records = employeeMapper.findPage(keyword, departmentId, positionId, employmentStatus,
-                null, (page - 1) * pageSize, pageSize).stream().map(EmployeeListVO::from).toList();
-        return new PageVO<>(records, employeeMapper.count(keyword, departmentId, positionId, employmentStatus, null), page, pageSize);
+                scope.unrestricted() ? null : scope.employeeIds(), scope.unrestricted() ? null : scope.departmentIds(), (page - 1) * pageSize, pageSize).stream().map(EmployeeListVO::from).toList();
+        return new PageVO<>(records, employeeMapper.count(keyword, departmentId, positionId, employmentStatus,
+                scope.unrestricted() ? null : scope.employeeIds(), scope.unrestricted() ? null : scope.departmentIds()), page, pageSize);
     }
 
     public Employee get(long id) {
         Employee employee = employeeMapper.findById(id);
         if (employee == null) throw new ResourceNotFoundException("Employee not found");
+        return employee;
+    }
+
+    public Employee getForUser(long userId, long id) {
+        EmployeeDataScope scope = dataScopeResolver.resolve(userId);
+        if (scope.isEmpty()) throw new ResourceNotFoundException("Employee not found");
+        Employee employee = get(id);
+        if (!scope.unrestricted()
+                && !scope.employeeIds().contains(employee.id())
+                && !scope.departmentIds().contains(employee.departmentId())) {
+            throw new ResourceNotFoundException("Employee not found");
+        }
         return employee;
     }
 
