@@ -33,6 +33,10 @@ class OpenApiContractTests {
             assertTrue(paths.containsKey("/workflow/tasks/instances/{id}/withdraw"));
             assertTrue(paths.containsKey("/work-calendars"));
             assertTrue(paths.containsKey("/work-calendars/{id}"));
+            assertTrue(paths.containsKey("/leave-balances"));
+            assertTrue(paths.containsKey("/leave-balances/employees/{employeeId}"));
+            assertTrue(paths.containsKey("/leave-balances/{id}/changes"));
+            assertTrue(paths.containsKey("/leave-balances/{id}/adjust"));
         }
     }
 }

@@ -58,6 +58,28 @@ export interface WorkCalendarPayload {
   version?: string
 }
 
+export interface LeaveBalance {
+  id: string
+  employeeId: string
+  balanceType: string
+  balanceYear: number
+  availableHours: number
+  frozenHours: number
+  version: string
+}
+
+export interface LeaveBalanceChange {
+  id: string
+  balanceType: string
+  deltaHours: number
+  beforeHours: number
+  afterHours: number
+  sourceType: string
+  reason: string
+  createdBy: string | null
+  createdTime: string
+}
+
 export async function fetchLeaveTypes() {
   const response = await http.get<ApiResponse<LeaveTypeOption[]>>('/leave-types')
   return response.data.data
@@ -95,5 +117,21 @@ export async function createWorkCalendar(payload: WorkCalendarPayload) {
 
 export async function updateWorkCalendar(id: string, payload: WorkCalendarPayload) {
   const response = await http.put<ApiResponse<WorkCalendar>>(`/work-calendars/${id}`, payload)
+  return response.data.data
+}
+
+export async function fetchLeaveBalances(employeeId?: string) {
+  const url = employeeId ? `/leave-balances/employees/${employeeId}` : '/leave-balances'
+  const response = await http.get<ApiResponse<LeaveBalance[]>>(url)
+  return response.data.data
+}
+
+export async function fetchLeaveBalanceChanges(id: string) {
+  const response = await http.get<ApiResponse<LeaveBalanceChange[]>>(`/leave-balances/${id}/changes`)
+  return response.data.data
+}
+
+export async function adjustLeaveBalance(id: string, payload: { deltaHours: number; direction: 'INCREASE' | 'DECREASE'; reason: string; version: string }) {
+  const response = await http.post<ApiResponse<LeaveBalance>>(`/leave-balances/${id}/adjust`, payload)
   return response.data.data
 }

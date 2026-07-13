@@ -3,6 +3,7 @@ import DashboardView from '@/views/DashboardView.vue'
 import DomainView from '@/views/DomainView.vue'
 import LeaveManagementView from '@/views/LeaveManagementView.vue'
 import WorkCalendarView from '@/views/WorkCalendarView.vue'
+import LeaveBalancesView from '@/views/LeaveBalancesView.vue'
 import LoginView from '@/views/LoginView.vue'
 import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
@@ -16,6 +17,7 @@ const routedComponents: Record<string, unknown> = {
   '/org/employees': OrganizationEmployeesView,
   '/attendance/leave': LeaveManagementView,
   '/attendance/calendar': WorkCalendarView,
+  '/attendance/balances': LeaveBalancesView,
   '/workflow/tasks': WorkflowTasksView,
   '/workflow/templates': WorkflowTemplatesView,
   '/system/users': SystemAccessView,

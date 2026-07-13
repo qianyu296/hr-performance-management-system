@@ -51,8 +51,11 @@ class LeaveRequestApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM att_leave_type WHERE id = ?", 92001L);
         jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id = ?", 90001L);
         jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id = ?", 92002L);
+        jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id = ?", 92006L);
         jdbcTemplate.update("DELETE FROM sys_menu WHERE id = ?", 92003L);
+        jdbcTemplate.update("DELETE FROM sys_menu WHERE id = ?", 92007L);
         jdbcTemplate.update("DELETE FROM sys_role WHERE id = ?", 92002L);
+        jdbcTemplate.update("DELETE FROM sys_role WHERE id = ?", 92006L);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", 90002L);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", 90001L);
         jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", 91004L);
@@ -229,6 +232,34 @@ class LeaveRequestApiIntegrationTests {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void authorizedUserCanReadAndAdjustLeaveBalanceWithImmutableChange() throws Exception {
+        grantBalanceAdjustmentPermission();
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
+                VALUES (?, ?, 'ANNUAL', 2026, 16.00)
+                """, 93001L, 91001L);
+
+        mockMvc.perform(get("/leave-balances").header("Authorization", bearerToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value("93001"))
+                .andExpect(jsonPath("$.data[0].availableHours").value(16.0));
+
+        mockMvc.perform(post("/leave-balances/{id}/adjust", 93001L)
+                        .header("Authorization", bearerToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"deltaHours\":\"2.00\",\"direction\":\"INCREASE\",\"reason\":\"Annual leave entitlement correction\",\"version\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.availableHours").value(18.0))
+                .andExpect(jsonPath("$.data.version").value("1"));
+
+        mockMvc.perform(get("/leave-balances/{id}/changes", 93001L).header("Authorization", bearerToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].sourceType").value("MANUAL_ADJUSTMENT"))
+                .andExpect(jsonPath("$.data[0].deltaHours").value(2.0))
+                .andExpect(jsonPath("$.data[0].reason").value("Annual leave entitlement correction"));
     }
 
     @Test
@@ -612,6 +643,14 @@ class LeaveRequestApiIntegrationTests {
                 """, 92003L);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 92004L, 90001L, 92002L);
         jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 92005L, 92002L, 92003L);
+    }
+
+    private void grantBalanceAdjustmentPermission() {
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'TEST_BALANCE_ADJUST', 'Test balance adjust', 'ACTIVE')", 92006L);
+        long balanceAdjustMenuId = jdbcTemplate.queryForObject(
+                "SELECT id FROM sys_menu WHERE permission_code = 'attendance:balance:adjust' AND deleted = 0", Long.class);
+        jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 92008L, 90001L, 92006L);
+        jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 92009L, 92006L, balanceAdjustMenuId);
     }
 
     private long seedSubmittedLeaveRequest(long requestId, String requestNo, String startTime, String endTime) throws Exception {
