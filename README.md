@@ -17,6 +17,8 @@
 
 For an existing local MySQL instance, provide `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` as environment variables rather than changing `application.yml`.
 
+After Flyway migration `V006`, the local bootstrap account is `admin` / `admin123`. It is intended for development only; change or disable it before any shared deployment.
+
 The backend runs on `http://localhost:8080`; the frontend runs on `http://localhost:5173`.
 
 ## Documentation
