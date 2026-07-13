@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import DomainView from '@/views/DomainView.vue'
 import LeaveManagementView from '@/views/LeaveManagementView.vue'
+import WorkCalendarView from '@/views/WorkCalendarView.vue'
 import LoginView from '@/views/LoginView.vue'
 import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
@@ -14,6 +15,7 @@ const routedComponents: Record<string, unknown> = {
   '/org/departments': OrganizationEmployeesView,
   '/org/employees': OrganizationEmployeesView,
   '/attendance/leave': LeaveManagementView,
+  '/attendance/calendar': WorkCalendarView,
   '/workflow/tasks': WorkflowTasksView,
   '/workflow/templates': WorkflowTemplatesView,
   '/system/users': SystemAccessView,

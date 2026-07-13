@@ -16,8 +16,6 @@ import com.hrpm.mapper.UserAccountMapper;
 import com.hrpm.vo.LeaveRequestListVO;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Duration;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +28,7 @@ public class LeaveRequestService {
     private final LeaveRequestMapper leaveRequestMapper;
     private final IdGenerator idGenerator;
     private final LeaveWorkflowService leaveWorkflowService;
+    private final WorkTimeService workTimeService;
 
     public LeaveRequestService(
             UserAccountMapper userAccountMapper,
@@ -37,13 +36,15 @@ public class LeaveRequestService {
             LeaveTypeMapper leaveTypeMapper,
             LeaveRequestMapper leaveRequestMapper,
             IdGenerator idGenerator,
-            LeaveWorkflowService leaveWorkflowService) {
+            LeaveWorkflowService leaveWorkflowService,
+            WorkTimeService workTimeService) {
         this.userAccountMapper = userAccountMapper;
         this.employeeAttendanceMapper = employeeAttendanceMapper;
         this.leaveTypeMapper = leaveTypeMapper;
         this.leaveRequestMapper = leaveRequestMapper;
         this.idGenerator = idGenerator;
         this.leaveWorkflowService = leaveWorkflowService;
+        this.workTimeService = workTimeService;
     }
 
     @Transactional
@@ -63,8 +64,10 @@ public class LeaveRequestService {
         if (!command.endTime().isAfter(command.startTime())) {
             throw new IllegalArgumentException("Leave end time must be after start time");
         }
-        BigDecimal durationHours = BigDecimal.valueOf(Duration.between(command.startTime(), command.endTime()).toMinutes())
-                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+        BigDecimal durationHours = workTimeService.calculateWorkHours(command.startTime(), command.endTime());
+        if (durationHours.signum() <= 0 || durationHours.remainder(leaveType.minUnitHours()).compareTo(BigDecimal.ZERO) != 0) {
+            throw new IllegalArgumentException("Leave duration does not match the leave type minimum unit");
+        }
         long id = idGenerator.nextId();
         LeaveRequestRecord request = new LeaveRequestRecord(
                 id,

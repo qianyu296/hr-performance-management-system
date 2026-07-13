@@ -23,6 +23,12 @@ public class ApiExceptionHandler {
                 .body(new ApiResponse<>("VALIDATION_FAILED", exception.getMessage(), null, TraceIdContext.current()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationFailure(IllegalArgumentException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>("VALIDATION_FAILED", exception.getMessage(), null, TraceIdContext.current()));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

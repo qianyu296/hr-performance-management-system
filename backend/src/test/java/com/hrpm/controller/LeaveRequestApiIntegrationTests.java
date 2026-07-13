@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDate;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,6 +38,7 @@ class LeaveRequestApiIntegrationTests {
 
     @BeforeEach
     void seedEmployeeAndLeaveType() {
+        cleanWorkCalendarFixture();
         jdbcTemplate.update("DELETE FROM wf_action_log");
         jdbcTemplate.update("DELETE FROM wf_task");
         jdbcTemplate.update("DELETE FROM wf_instance");
@@ -78,6 +80,11 @@ class LeaveRequestApiIntegrationTests {
                 INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, status)
                 VALUES (?, 'ANNUAL', 'Annual Leave', 1, 1.00, 'ACTIVE')
                 """, 92001L);
+    }
+
+    @AfterEach
+    void cleanWorkCalendarAfterTest() {
+        cleanWorkCalendarFixture();
     }
 
     @Test
@@ -183,6 +190,45 @@ class LeaveRequestApiIntegrationTests {
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_instance", Integer.class));
         org.junit.jupiter.api.Assertions.assertEquals(1,
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_task WHERE status = 'PENDING'", Integer.class));
+    }
+
+    @Test
+    void workCalendarControlsLeaveDurationAndMinimumUnit() throws Exception {
+        grantLeaveSubmitPermission();
+        String adminToken = "Bearer " + tokenService.issue(9000001L, "admin", 0);
+        mockMvc.perform(post("/work-calendars")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"calendarYear":2026,"name":"2026 Test Calendar","timeZone":"UTC","status":"ACTIVE","days":[
+                                  {"workDate":"2026-07-27","workday":true,"workHours":4.00},
+                                  {"workDate":"2026-07-28","workday":false,"workHours":0.00,"holidayName":"Test Holiday"}
+                                ]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.days[0].workHours").value(4.0))
+                .andExpect(jsonPath("$.data.days[1].workday").value(false));
+
+        mockMvc.perform(post("/leave-requests")
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-calendar-duration-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"leaveTypeId":"92001","startTime":"2026-07-27T09:00:00Z","endTime":"2026-07-28T17:00:00Z","reason":"Calendar duration"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.durationHours").value(4.0));
+
+        jdbcTemplate.update("UPDATE att_leave_type SET min_unit_hours = 2.00 WHERE id = ?", 92001L);
+        mockMvc.perform(post("/leave-requests")
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-calendar-min-unit-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"leaveTypeId":"92001","startTime":"2026-07-27T09:00:00Z","endTime":"2026-07-27T10:00:00Z","reason":"Invalid unit"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
     @Test
@@ -598,6 +644,15 @@ class LeaveRequestApiIntegrationTests {
 
     private long findInstanceId(long requestId) {
         return jdbcTemplate.queryForObject("SELECT workflow_instance_id FROM att_leave_request WHERE id = ?", Long.class, requestId);
+    }
+
+    private void cleanWorkCalendarFixture() {
+        jdbcTemplate.update("""
+                DELETE d FROM att_work_calendar_day d
+                JOIN att_work_calendar c ON c.id = d.calendar_id
+                WHERE c.name = '2026 Test Calendar'
+                """);
+        jdbcTemplate.update("DELETE FROM att_work_calendar WHERE name = '2026 Test Calendar'");
     }
 
     private void seedLeaveWorkflowTemplate() {

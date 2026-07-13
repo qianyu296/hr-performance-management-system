@@ -30,6 +30,34 @@ export interface CreateLeaveRequestPayload {
   reason: string
 }
 
+export interface WorkCalendarDay {
+  id?: string
+  workDate: string
+  workday: boolean
+  workHours: number
+  holidayName?: string | null
+  version?: string
+}
+
+export interface WorkCalendar {
+  id: string
+  calendarYear: number
+  name: string
+  timeZone: string
+  status: 'ACTIVE' | 'INACTIVE'
+  version: string
+  days: WorkCalendarDay[]
+}
+
+export interface WorkCalendarPayload {
+  calendarYear?: number
+  name: string
+  timeZone: string
+  status: 'ACTIVE' | 'INACTIVE'
+  days: Array<{ workDate: string; workday: boolean; workHours: number; holidayName?: string }>
+  version?: string
+}
+
 export async function fetchLeaveTypes() {
   const response = await http.get<ApiResponse<LeaveTypeOption[]>>('/leave-types')
   return response.data.data
@@ -52,5 +80,20 @@ export async function submitLeaveRequest(id: string, version: number) {
 
 export async function cancelLeaveRequest(id: string, version: number) {
   const response = await http.post<ApiResponse<{ id: string; status: string }>>(`/leave-requests/${id}/cancel`, { version })
+  return response.data.data
+}
+
+export async function fetchWorkCalendar(year: number) {
+  const response = await http.get<ApiResponse<WorkCalendar>>('/work-calendars', { params: { year } })
+  return response.data.data
+}
+
+export async function createWorkCalendar(payload: WorkCalendarPayload) {
+  const response = await http.post<ApiResponse<WorkCalendar>>('/work-calendars', payload)
+  return response.data.data
+}
+
+export async function updateWorkCalendar(id: string, payload: WorkCalendarPayload) {
+  const response = await http.put<ApiResponse<WorkCalendar>>(`/work-calendars/${id}`, payload)
   return response.data.data
 }
