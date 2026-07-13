@@ -16,6 +16,7 @@ export const navigationItems: NavigationItem[] = [
   { path: '/org/employees', title: '员工档案', description: '员工目录、任职信息和履历记录', group: '组织人事', icon: UserFilled, permission: 'org:read' },
   { path: '/personnel/changes', title: '人事异动', description: '入转调离申请与审批进度', group: '组织人事', icon: Operation, permission: 'personnel:read' },
   { path: '/attendance/leave', title: '请假管理', description: '请假申请、审批状态和撤销处理', group: '假勤管理', icon: Calendar, permission: 'attendance:submit' },
+  { path: '/attendance/overtime', title: '加班管理', description: '加班申请、补偿方式和审批状态', group: '假勤管理', icon: Calendar, permission: 'attendance:submit' },
   { path: '/attendance/calendar', title: '工作日历', description: '节假日、调休和工作时长配置', group: '假勤管理', icon: Calendar, permission: 'attendance:manage' },
   { path: '/attendance/balances', title: '假期余额', description: '个人余额、调整流水和统计口径', group: '假勤管理', icon: Histogram, permission: 'attendance:read' },
   { path: '/goals/cycles', title: '目标管理', description: '目标周期、目标树和进度记录', group: '目标绩效', icon: DocumentChecked, permission: 'goal:read' },

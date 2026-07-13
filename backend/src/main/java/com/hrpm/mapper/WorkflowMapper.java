@@ -31,6 +31,18 @@ public interface WorkflowMapper {
     WorkflowTemplate findLeaveTemplate(@Param("departmentId") long departmentId);
 
     @Select("""
+            SELECT t.id, t.template_version AS templateVersion
+            FROM wf_template t
+            LEFT JOIN wf_template_scope s ON s.template_id = t.id AND s.deleted = 0
+            WHERE t.business_type = #{businessType} AND t.status = 'ACTIVE' AND t.deleted = 0
+              AND (s.department_id = #{departmentId} OR s.id IS NULL)
+            ORDER BY CASE WHEN s.department_id = #{departmentId} THEN 1 ELSE 0 END DESC,
+                     t.priority DESC, t.template_version DESC
+            LIMIT 1
+            """)
+    WorkflowTemplate findTemplateForBusiness(@Param("businessType") String businessType, @Param("departmentId") long departmentId);
+
+    @Select("""
             SELECT id, code, name, business_type AS businessType, priority, template_version AS templateVersion, status, version
             FROM wf_template
             WHERE deleted = 0
@@ -100,6 +112,14 @@ public interface WorkflowMapper {
     int insertInstance(@Param("id") long id, @Param("businessId") long businessId,
             @Param("initiatorUserId") long initiatorUserId, @Param("templateSnapshot") String templateSnapshot,
             @Param("nodeNo") int nodeNo);
+
+    @Insert("""
+            INSERT INTO wf_instance (id, business_type, business_id, initiator_user_id, template_snapshot, status, current_node_no)
+            VALUES (#{id}, #{businessType}, #{businessId}, #{initiatorUserId}, #{templateSnapshot}, 'IN_PROGRESS', #{nodeNo})
+            """)
+    int insertBusinessInstance(@Param("id") long id, @Param("businessType") String businessType,
+            @Param("businessId") long businessId, @Param("initiatorUserId") long initiatorUserId,
+            @Param("templateSnapshot") String templateSnapshot, @Param("nodeNo") int nodeNo);
 
     @Insert("""
             INSERT INTO wf_task (id, instance_id, node_no, node_snapshot, assignee_user_id, status)
@@ -207,17 +227,30 @@ public interface WorkflowMapper {
     Long findPendingTaskId(@Param("instanceId") long instanceId);
 
     @Select("""
-            SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
-                   r.request_no AS requestNo, e.name AS applicantName, lt.name AS leaveTypeName,
-                   r.start_time AS startTime, r.end_time AS endTime, r.duration_hours AS durationHours,
-                   t.status, t.version
-            FROM wf_task t
-            JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0
-            JOIN att_leave_request r ON r.id = i.business_id AND r.deleted = 0
-            JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
-            JOIN att_leave_type lt ON lt.id = r.leave_type_id AND lt.deleted = 0
-            WHERE t.assignee_user_id = #{userId} AND t.status = 'PENDING' AND t.deleted = 0
-            ORDER BY t.created_time DESC, t.id DESC
+            SELECT * FROM (
+                SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
+                       r.request_no AS requestNo, e.name AS applicantName, lt.name AS leaveTypeName,
+                       r.start_time AS startTime, r.end_time AS endTime, r.duration_hours AS durationHours,
+                       t.status, t.version, t.created_time AS createdTime
+                FROM wf_task t
+                JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'LEAVE'
+                JOIN att_leave_request r ON r.id = i.business_id AND r.deleted = 0
+                JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
+                JOIN att_leave_type lt ON lt.id = r.leave_type_id AND lt.deleted = 0
+                WHERE t.assignee_user_id = #{userId} AND t.status = 'PENDING' AND t.deleted = 0
+                UNION ALL
+                SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
+                       r.request_no AS requestNo, e.name AS applicantName,
+                       CASE r.compensation_type WHEN 'TIME_OFF' THEN '加班（调休）' ELSE '加班（加班费）' END AS leaveTypeName,
+                       r.start_time AS startTime, r.end_time AS endTime, r.duration_hours AS durationHours,
+                       t.status, t.version, t.created_time AS createdTime
+                FROM wf_task t
+                JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'OVERTIME'
+                JOIN att_overtime_request r ON r.id = i.business_id AND r.deleted = 0
+                JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
+                WHERE t.assignee_user_id = #{userId} AND t.status = 'PENDING' AND t.deleted = 0
+            ) pending
+            ORDER BY createdTime DESC, id DESC
             """)
     List<WorkflowTaskListRow> listPendingTasks(@Param("userId") long userId);
 

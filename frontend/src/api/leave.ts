@@ -80,6 +80,18 @@ export interface LeaveBalanceChange {
   createdTime: string
 }
 
+export interface OvertimeRequestItem {
+  id: string
+  requestNo: string
+  startTime: string
+  endTime: string
+  durationHours: number
+  compensationType: 'TIME_OFF' | 'OVERTIME_PAY'
+  status: string
+  workflowInstanceId: string | null
+  version: number
+}
+
 export async function fetchLeaveTypes() {
   const response = await http.get<ApiResponse<LeaveTypeOption[]>>('/leave-types')
   return response.data.data
@@ -133,5 +145,25 @@ export async function fetchLeaveBalanceChanges(id: string) {
 
 export async function adjustLeaveBalance(id: string, payload: { deltaHours: number; direction: 'INCREASE' | 'DECREASE'; reason: string; version: string }) {
   const response = await http.post<ApiResponse<LeaveBalance>>(`/leave-balances/${id}/adjust`, payload)
+  return response.data.data
+}
+
+export async function fetchOvertimeRequests() {
+  const response = await http.get<ApiResponse<OvertimeRequestItem[]>>('/overtime-requests')
+  return response.data.data
+}
+
+export async function createOvertimeRequest(payload: { startTime: string; endTime: string; reason: string; compensationType: 'TIME_OFF' | 'OVERTIME_PAY' }) {
+  const response = await http.post<ApiResponse<OvertimeRequestItem>>('/overtime-requests', payload)
+  return response.data.data
+}
+
+export async function submitOvertimeRequest(id: string, version: number) {
+  const response = await http.post<ApiResponse<OvertimeRequestItem>>(`/overtime-requests/${id}/submit`, { version })
+  return response.data.data
+}
+
+export async function cancelOvertimeRequest(id: string, version: number) {
+  const response = await http.post<ApiResponse<OvertimeRequestItem>>(`/overtime-requests/${id}/cancel`, { version })
   return response.data.data
 }

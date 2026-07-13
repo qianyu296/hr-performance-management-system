@@ -118,6 +118,26 @@ paths:
       parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AdjustLeaveBalanceRequest'}}}}
       responses: {'200': {description: Adjusted leave balance, content: {application/json: {schema: {$ref: '#/components/schemas/LeaveBalanceResponse'}}}}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /overtime-requests:
+    get:
+      operationId: listMyOvertimeRequests
+      responses: {'200': {description: Current employee overtime requests, content: {application/json: {schema: {$ref: '#/components/schemas/OvertimeRequestListResponse'}}}}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      operationId: createOvertimeRequestDraft
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateOvertimeRequest'}}}}
+      responses: {'200': {description: Overtime draft, content: {application/json: {schema: {$ref: '#/components/schemas/OvertimeRequestResponse'}}}}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /overtime-requests/{id}/submit:
+    post:
+      operationId: submitOvertimeRequest
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/VersionCommand'}}}}
+      responses: {'200': {description: Overtime request in progress, content: {application/json: {schema: {$ref: '#/components/schemas/OvertimeRequestResponse'}}}}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}, '422': {$ref: '#/components/responses/Error'}}
+  /overtime-requests/{id}/cancel:
+    post:
+      operationId: cancelOvertimeRequest
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/VersionCommand'}}}}
+      responses: {'200': {description: Cancelled overtime request, content: {application/json: {schema: {$ref: '#/components/schemas/OvertimeRequestResponse'}}}}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
   /employees:
     get:
       operationId: listEmployees
@@ -284,11 +304,16 @@ components:
     CreateWorkCalendarRequest: {type: object, required: [calendarYear, name, timeZone, status, days], properties: {calendarYear: {type: integer, minimum: 2000, maximum: 2100}, name: {type: string}, timeZone: {type: string}, status: {type: string, enum: [ACTIVE, INACTIVE]}, days: {type: array, items: {$ref: '#/components/schemas/WorkCalendarDay'}}}}
     UpdateWorkCalendarRequest: {type: object, required: [name, timeZone, status, days, version], properties: {name: {type: string}, timeZone: {type: string}, status: {type: string, enum: [ACTIVE, INACTIVE]}, days: {type: array, items: {$ref: '#/components/schemas/WorkCalendarDay'}}, version: {type: string}}}
     LeaveBalance: {type: object, required: [id, employeeId, balanceType, balanceYear, availableHours, frozenHours, version], properties: {id: {type: string, format: int64}, employeeId: {type: string, format: int64}, balanceType: {type: string}, balanceYear: {type: integer}, availableHours: {type: number}, frozenHours: {type: number}, version: {type: string}}}
-    LeaveBalanceChange: {type: object, required: [id, balanceType, deltaHours, beforeHours, afterHours, sourceType, reason, createdTime], properties: {id: {type: string, format: int64}, balanceType: {type: string}, deltaHours: {type: number}, beforeHours: {type: number}, afterHours: {type: number}, sourceType: {type: string, enum: [MANUAL_ADJUSTMENT, LEAVE_APPROVAL, LEAVE_CANCEL, TIME_OFF]}, reason: {type: string}, createdBy: {type: [string, 'null'], format: int64}, createdTime: {type: string, format: date-time}}}
+    LeaveBalanceChange: {type: object, required: [id, balanceType, deltaHours, beforeHours, afterHours, sourceType, reason, createdTime], properties: {id: {type: string, format: int64}, balanceType: {type: string}, deltaHours: {type: number}, beforeHours: {type: number}, afterHours: {type: number}, sourceType: {type: string, enum: [MANUAL_ADJUSTMENT, LEAVE_APPROVAL, LEAVE_CANCELLATION, TIME_OFF, OVERTIME_CANCELLATION]}, reason: {type: string}, createdBy: {type: [string, 'null'], format: int64}, createdTime: {type: string, format: date-time}}}
     AdjustLeaveBalanceRequest: {type: object, required: [deltaHours, direction, reason, version], properties: {deltaHours: {type: number, exclusiveMinimum: 0}, direction: {type: string, enum: [INCREASE, DECREASE]}, reason: {type: string, minLength: 1, maxLength: 500}, version: {type: string}}}
     LeaveBalanceResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {$ref: '#/components/schemas/LeaveBalance'}}}]}
     LeaveBalanceListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/LeaveBalance'}}}}]}
     LeaveBalanceChangeListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/LeaveBalanceChange'}}}}]}
+    VersionCommand: {type: object, required: [version], properties: {version: {type: integer, minimum: 0}}}
+    CreateOvertimeRequest: {type: object, required: [startTime, endTime, reason, compensationType], properties: {startTime: {type: string, format: date-time}, endTime: {type: string, format: date-time}, reason: {type: string, minLength: 1, maxLength: 1000}, compensationType: {type: string, enum: [TIME_OFF, OVERTIME_PAY]}}}
+    OvertimeRequest: {type: object, required: [id, requestNo, startTime, endTime, durationHours, compensationType, status, version], properties: {id: {type: string, format: int64}, requestNo: {type: string}, startTime: {type: string, format: date-time}, endTime: {type: string, format: date-time}, durationHours: {type: number}, compensationType: {type: string, enum: [TIME_OFF, OVERTIME_PAY]}, status: {type: string, enum: [DRAFT, IN_PROGRESS, APPROVED, REJECTED, CANCELLED]}, workflowInstanceId: {type: [string, 'null'], format: int64}, version: {type: integer}}}
+    OvertimeRequestResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {$ref: '#/components/schemas/OvertimeRequest'}}}]}
+    OvertimeRequestListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/OvertimeRequest'}}}}]}
     WorkflowTemplateNode: {type: object, required: [nodeNo, nodeType, approverRule], properties: {nodeNo: {type: integer, minimum: 1}, nodeType: {type: string, enum: [SPECIFIC_USER, DIRECT_MANAGER, DEPARTMENT_LEADER, HR]}, approverRule: {type: object}}}
     CreateWorkflowTemplateRequest: {type: object, required: [code, name, businessType, priority, templateVersion, status, departmentIds, nodes], properties: {code: {type: string}, name: {type: string}, businessType: {type: string, enum: [LEAVE, OVERTIME, PERSONNEL_CHANGE, PERFORMANCE_APPEAL]}, priority: {type: integer, minimum: 0}, templateVersion: {type: integer, minimum: 1}, status: {type: string, enum: [ACTIVE, INACTIVE]}, departmentIds: {type: array, items: {type: string}}, nodes: {type: array, minItems: 1, items: {$ref: '#/components/schemas/WorkflowTemplateNode'}}}}
     UpdateWorkflowTemplateRequest: {type: object, required: [name, businessType, priority, status, departmentIds, nodes, version], properties: {name: {type: string}, businessType: {type: string, enum: [LEAVE, OVERTIME, PERSONNEL_CHANGE, PERFORMANCE_APPEAL]}, priority: {type: integer, minimum: 0}, status: {type: string, enum: [ACTIVE, INACTIVE]}, departmentIds: {type: array, items: {type: string}}, nodes: {type: array, minItems: 1, items: {$ref: '#/components/schemas/WorkflowTemplateNode'}}, version: {type: string}}}

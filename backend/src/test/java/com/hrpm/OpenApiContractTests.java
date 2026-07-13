@@ -37,6 +37,9 @@ class OpenApiContractTests {
             assertTrue(paths.containsKey("/leave-balances/employees/{employeeId}"));
             assertTrue(paths.containsKey("/leave-balances/{id}/changes"));
             assertTrue(paths.containsKey("/leave-balances/{id}/adjust"));
+            assertTrue(paths.containsKey("/overtime-requests"));
+            assertTrue(paths.containsKey("/overtime-requests/{id}/submit"));
+            assertTrue(paths.containsKey("/overtime-requests/{id}/cancel"));
         }
     }
 }
