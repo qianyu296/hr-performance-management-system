@@ -5,6 +5,7 @@ import LeaveManagementView from '@/views/LeaveManagementView.vue'
 import OvertimeManagementView from '@/views/OvertimeManagementView.vue'
 import WorkCalendarView from '@/views/WorkCalendarView.vue'
 import LeaveBalancesView from '@/views/LeaveBalancesView.vue'
+import AttendanceSummaryView from '@/views/AttendanceSummaryView.vue'
 import LoginView from '@/views/LoginView.vue'
 import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
@@ -20,6 +21,7 @@ const routedComponents: Record<string, unknown> = {
   '/attendance/overtime': OvertimeManagementView,
   '/attendance/calendar': WorkCalendarView,
   '/attendance/balances': LeaveBalancesView,
+  '/attendance/summary': AttendanceSummaryView,
   '/workflow/tasks': WorkflowTasksView,
   '/workflow/templates': WorkflowTemplatesView,
   '/system/users': SystemAccessView,

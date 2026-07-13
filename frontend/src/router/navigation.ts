@@ -19,6 +19,7 @@ export const navigationItems: NavigationItem[] = [
   { path: '/attendance/overtime', title: '加班管理', description: '加班申请、补偿方式和审批状态', group: '假勤管理', icon: Calendar, permission: 'attendance:submit' },
   { path: '/attendance/calendar', title: '工作日历', description: '节假日、调休和工作时长配置', group: '假勤管理', icon: Calendar, permission: 'attendance:manage' },
   { path: '/attendance/balances', title: '假期余额', description: '个人余额、调整流水和统计口径', group: '假勤管理', icon: Histogram, permission: 'attendance:read' },
+  { path: '/attendance/summary', title: '月度假勤汇总', description: '按员工汇总请假、加班、调休和待审批', group: '假勤管理', icon: Histogram, permission: 'attendance:manage' },
   { path: '/goals/cycles', title: '目标管理', description: '目标周期、目标树和进度记录', group: '目标绩效', icon: DocumentChecked, permission: 'goal:read' },
   { path: '/performance/cycles', title: '绩效周期', description: '绩效周期、方案和任务进度', group: '目标绩效', icon: DataAnalysis, permission: 'performance:config' },
   { path: '/workflow/tasks', title: '审批中心', description: '待办任务、审批历史和流程处理', group: '审批协同', icon: DocumentChecked, permission: 'workflow:approve' },
