@@ -4,6 +4,7 @@ import DomainView from '@/views/DomainView.vue'
 import LeaveManagementView from '@/views/LeaveManagementView.vue'
 import LoginView from '@/views/LoginView.vue'
 import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
+import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
 import OrganizationEmployeesView from '@/views/OrganizationEmployeesView.vue'
 import SystemAccessView from '@/views/SystemAccessView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -14,6 +15,7 @@ const routedComponents: Record<string, unknown> = {
   '/org/employees': OrganizationEmployeesView,
   '/attendance/leave': LeaveManagementView,
   '/workflow/tasks': WorkflowTasksView,
+  '/workflow/templates': WorkflowTemplatesView,
   '/system/users': SystemAccessView,
 }
 

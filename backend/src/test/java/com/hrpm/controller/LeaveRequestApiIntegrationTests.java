@@ -53,6 +53,7 @@ class LeaveRequestApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM sys_role WHERE id = ?", 92002L);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", 90002L);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", 90001L);
+        jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", 91004L);
         jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", 91001L);
         jdbcTemplate.update("DELETE FROM hr_position WHERE id = ?", 91002L);
         jdbcTemplate.update("DELETE FROM hr_department WHERE id = ?", 91003L);
@@ -182,6 +183,47 @@ class LeaveRequestApiIntegrationTests {
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_instance", Integer.class));
         org.junit.jupiter.api.Assertions.assertEquals(1,
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_task WHERE status = 'PENDING'", Integer.class));
+    }
+
+    @Test
+    void directManagerRuleResolvesManagerAccountWhenLeaveIsSubmitted() throws Exception {
+        grantLeaveSubmitPermission();
+        seedLeaveWorkflowTemplate();
+        jdbcTemplate.update("UPDATE wf_template_node SET node_type = 'DIRECT_MANAGER', approver_rule = JSON_OBJECT('type', 'DIRECT_MANAGER') WHERE id = ?", 95003L);
+        jdbcTemplate.update("""
+                INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date)
+                VALUES (?, 'E-TEST-MANAGER', 'Test Manager', ?, ?, 'FORMAL', ?)
+                """, 91004L, 91003L, 91002L, LocalDate.of(2024, 1, 1));
+        jdbcTemplate.update("UPDATE hr_employee SET manager_employee_id = ? WHERE id = ?", 91004L, 91001L);
+        jdbcTemplate.update("""
+                INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version)
+                VALUES (?, 'test-manager', ?, ?, 'ACTIVE', 1)
+                """, 90002L, new BCryptPasswordEncoder().encode("correct-password"), 91004L);
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
+                VALUES (?, ?, 'ANNUAL', 2026, 16.00)
+                """, 93001L, 91001L);
+        long requestId = 94010L;
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_request (
+                    id, request_no, employee_id, leave_type_id, start_time, end_time,
+                    duration_hours, reason, status, organization_snapshot)
+                VALUES (?, 'LR94010', ?, ?, ?, ?, 8.00, 'Annual leave', 'DRAFT', '{}')
+                """, requestId, 91001L, 92001L,
+                Instant.parse("2026-07-22T09:00:00Z"), Instant.parse("2026-07-22T17:00:00Z"));
+
+        mockMvc.perform(post("/leave-requests/{id}/submit", requestId)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-submit-direct-manager-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(90002L, jdbcTemplate.queryForObject("""
+                SELECT assignee_user_id FROM wf_task
+                WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)
+                """, Long.class, requestId));
     }
 
     @Test

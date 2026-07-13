@@ -20,6 +20,7 @@ export const navigationItems: NavigationItem[] = [
   { path: '/goals/cycles', title: '目标管理', description: '目标周期、目标树和进度记录', group: '目标绩效', icon: DocumentChecked, permission: 'goal:read' },
   { path: '/performance/cycles', title: '绩效周期', description: '绩效周期、方案和任务进度', group: '目标绩效', icon: DataAnalysis, permission: 'performance:config' },
   { path: '/workflow/tasks', title: '审批中心', description: '待办任务、审批历史和流程处理', group: '审批协同', icon: DocumentChecked, permission: 'workflow:approve' },
+  { path: '/workflow/templates', title: '流程模板', description: '审批节点、范围和优先级配置', group: '审批协同', icon: Operation, permission: 'workflow:manage' },
   { path: '/reports/overview', title: '数据分析', description: '人力、假勤和绩效指标分析', group: '数据分析', icon: Histogram, permission: 'report:read' },
   { path: '/system/users', title: '系统管理', description: '用户、角色、菜单和审计配置', group: '系统管理', icon: Setting, permission: 'system:manage' },
 ]

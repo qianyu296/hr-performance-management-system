@@ -44,7 +44,8 @@ public class LeaveWorkflowService {
             throw new WorkflowTemplateMissingException();
         }
         List<WorkflowNodeSnapshot> nodeSnapshots = workflowMapper.findNodes(template.id()).stream()
-                .map(node -> new WorkflowNodeSnapshot(node.nodeNo(), node.nodeType(), parseRule(node), workflowApproverResolver.resolve(node)))
+                .map(node -> new WorkflowNodeSnapshot(node.nodeNo(), node.nodeType(), parseRule(node),
+                        workflowApproverResolver.resolve(node, request.employeeId(), request.departmentId())))
                 .toList();
         if (nodeSnapshots.isEmpty()) {
             throw new WorkflowTemplateMissingException();

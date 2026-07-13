@@ -4,6 +4,7 @@ package com.hrpm.mapper;
 import com.hrpm.entity.WorkflowTask;
 import com.hrpm.entity.WorkflowTaskListRow;
 import com.hrpm.entity.WorkflowTemplate;
+import com.hrpm.entity.WorkflowTemplateDefinition;
 import com.hrpm.entity.WorkflowTemplateNode;
 
 import org.apache.ibatis.annotations.Insert;
@@ -26,6 +27,52 @@ public interface WorkflowMapper {
             LIMIT 1
             """)
     WorkflowTemplate findLeaveTemplate(@Param("departmentId") long departmentId);
+
+    @Select("""
+            SELECT id, code, name, business_type AS businessType, priority, template_version AS templateVersion, status, version
+            FROM wf_template
+            WHERE deleted = 0
+            ORDER BY business_type, code, template_version DESC
+            """)
+    List<WorkflowTemplateDefinition> findTemplates();
+
+    @Select("""
+            SELECT id, code, name, business_type AS businessType, priority, template_version AS templateVersion, status, version
+            FROM wf_template
+            WHERE id = #{id} AND deleted = 0
+            """)
+    WorkflowTemplateDefinition findTemplateById(@Param("id") long id);
+
+    @Select("SELECT department_id FROM wf_template_scope WHERE template_id = #{templateId} AND deleted = 0 ORDER BY department_id")
+    List<Long> findScopeDepartmentIds(@Param("templateId") long templateId);
+
+    @Select("SELECT COUNT(*) FROM wf_template WHERE business_type = #{businessType} AND code = #{code} AND template_version = #{templateVersion} AND deleted = 0")
+    int countByCodeAndVersion(@Param("businessType") String businessType, @Param("code") String code, @Param("templateVersion") int templateVersion);
+
+    @Insert("INSERT INTO wf_template (id, code, name, business_type, priority, template_version, status) VALUES (#{id}, #{code}, #{name}, #{businessType}, #{priority}, #{templateVersion}, #{status})")
+    int insertTemplate(@Param("id") long id, @Param("code") String code, @Param("name") String name,
+            @Param("businessType") String businessType, @Param("priority") int priority,
+            @Param("templateVersion") int templateVersion, @Param("status") String status);
+
+    @Update("UPDATE wf_template SET name = #{name}, business_type = #{businessType}, priority = #{priority}, status = #{status}, version = version + 1 WHERE id = #{id} AND version = #{version} AND deleted = 0")
+    int updateTemplate(@Param("id") long id, @Param("name") String name, @Param("businessType") String businessType,
+            @Param("priority") int priority, @Param("status") String status, @Param("version") int version);
+
+    @Update("UPDATE wf_template_scope SET deleted = 1, version = version + 1 WHERE template_id = #{templateId} AND deleted = 0")
+    int deleteScopes(@Param("templateId") long templateId);
+
+    @Update("UPDATE wf_template_node SET deleted = 1, version = version + 1 WHERE template_id = #{templateId} AND deleted = 0")
+    int deleteNodes(@Param("templateId") long templateId);
+
+    @Insert("INSERT INTO wf_template_scope (id, template_id, department_id) VALUES (#{id}, #{templateId}, #{departmentId})")
+    int insertScope(@Param("id") long id, @Param("templateId") long templateId, @Param("departmentId") long departmentId);
+
+    @Insert("INSERT INTO wf_template_node (id, template_id, node_no, node_type, approver_rule) VALUES (#{id}, #{templateId}, #{nodeNo}, #{nodeType}, CAST(#{approverRule} AS JSON))")
+    int insertNode(@Param("id") long id, @Param("templateId") long templateId, @Param("nodeNo") int nodeNo,
+            @Param("nodeType") String nodeType, @Param("approverRule") String approverRule);
+
+    @Select("SELECT COUNT(*) FROM hr_department WHERE id = #{id} AND status = 'ACTIVE' AND deleted = 0")
+    int countActiveDepartment(@Param("id") long id);
 
     @Select("""
             SELECT node_no AS nodeNo, node_type AS nodeType, approver_rule AS approverRule
@@ -81,6 +128,36 @@ public interface WorkflowMapper {
             WHERE id = #{id} AND status = 'ACTIVE' AND deleted = 0
             """)
     Long findActiveUserId(@Param("id") long id);
+
+    @Select("""
+            SELECT u.id
+            FROM hr_employee applicant
+            JOIN hr_employee manager ON manager.id = applicant.manager_employee_id
+              AND manager.deleted = 0 AND manager.employment_status IN ('FORMAL', 'PROBATION')
+            JOIN sys_user u ON u.employee_id = manager.id AND u.status = 'ACTIVE' AND u.deleted = 0
+            WHERE applicant.id = #{employeeId} AND applicant.deleted = 0
+            """)
+    Long findDirectManagerUserId(@Param("employeeId") long employeeId);
+
+    @Select("""
+            SELECT u.id
+            FROM hr_department d
+            JOIN hr_employee leader ON leader.id = d.leader_employee_id
+              AND leader.deleted = 0 AND leader.employment_status IN ('FORMAL', 'PROBATION')
+            JOIN sys_user u ON u.employee_id = leader.id AND u.status = 'ACTIVE' AND u.deleted = 0
+            WHERE d.id = #{departmentId} AND d.status = 'ACTIVE' AND d.deleted = 0
+            """)
+    Long findDepartmentLeaderUserId(@Param("departmentId") long departmentId);
+
+    @Select("""
+            SELECT u.id
+            FROM sys_user u
+            JOIN sys_user_role ur ON ur.user_id = u.id AND ur.deleted = 0
+            JOIN sys_role r ON r.id = ur.role_id AND r.deleted = 0 AND r.status = 'ACTIVE'
+            WHERE u.status = 'ACTIVE' AND u.deleted = 0 AND r.code = #{roleCode}
+            ORDER BY u.id
+            """)
+    List<Long> findActiveUserIdsByRoleCode(@Param("roleCode") String roleCode);
 
     @Update("UPDATE wf_instance SET current_node_no = #{nodeNo}, version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS'")
     int advanceInstance(@Param("id") long id, @Param("nodeNo") int nodeNo);

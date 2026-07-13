@@ -139,6 +139,23 @@ paths:
       operationId: listWorkflowTasks
       parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
       responses: {'200': {$ref: '#/components/responses/PageSuccess'}}
+  /workflow/templates:
+    get:
+      operationId: listWorkflowTemplates
+      responses: {'200': {$ref: '#/components/responses/Success'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      operationId: createWorkflowTemplate
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateWorkflowTemplateRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /workflow/templates/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
+    get:
+      operationId: getWorkflowTemplate
+      responses: {'200': {$ref: '#/components/responses/Success'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+    put:
+      operationId: updateWorkflowTemplate
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateWorkflowTemplateRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
   /workflow/tasks/{id}/{action}:
     post:
       operationId: actWorkflowTask
@@ -202,6 +219,9 @@ components:
     LoginRequest: {type: object, required: [username, password], properties: {username: {type: string}, password: {type: string, format: password}}}
     RefreshRequest: {type: object, required: [refreshToken], properties: {refreshToken: {type: string}}}
     UpdateUserRolesRequest: {type: object, required: [roleIds, version], properties: {roleIds: {type: array, items: {type: string}}, version: {type: string}}}
+    WorkflowTemplateNode: {type: object, required: [nodeNo, nodeType, approverRule], properties: {nodeNo: {type: integer, minimum: 1}, nodeType: {type: string, enum: [SPECIFIC_USER, DIRECT_MANAGER, DEPARTMENT_LEADER, HR]}, approverRule: {type: object}}}
+    CreateWorkflowTemplateRequest: {type: object, required: [code, name, businessType, priority, templateVersion, status, departmentIds, nodes], properties: {code: {type: string}, name: {type: string}, businessType: {type: string, enum: [LEAVE, OVERTIME, PERSONNEL_CHANGE, PERFORMANCE_APPEAL]}, priority: {type: integer, minimum: 0}, templateVersion: {type: integer, minimum: 1}, status: {type: string, enum: [ACTIVE, INACTIVE]}, departmentIds: {type: array, items: {type: string}}, nodes: {type: array, minItems: 1, items: {$ref: '#/components/schemas/WorkflowTemplateNode'}}}}
+    UpdateWorkflowTemplateRequest: {type: object, required: [name, businessType, priority, status, departmentIds, nodes, version], properties: {name: {type: string}, businessType: {type: string, enum: [LEAVE, OVERTIME, PERSONNEL_CHANGE, PERFORMANCE_APPEAL]}, priority: {type: integer, minimum: 0}, status: {type: string, enum: [ACTIVE, INACTIVE]}, departmentIds: {type: array, items: {type: string}}, nodes: {type: array, minItems: 1, items: {$ref: '#/components/schemas/WorkflowTemplateNode'}}, version: {type: string}}}
     ResourceCommand: {type: object, additionalProperties: true}
     VersionedResourceCommand: {allOf: [{$ref: '#/components/schemas/ResourceCommand'}, {type: object, required: [version], properties: {version: {type: string}}}]}
     WorkflowActionCommand: {type: object, required: [version, comment], properties: {version: {type: string}, comment: {type: string, minLength: 1}, transferToUserId: {type: string}}}
