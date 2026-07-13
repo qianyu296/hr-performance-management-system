@@ -78,7 +78,7 @@ onMounted(loadData)
         <template #default="{ row }">{{ row.employeeId ?? '-' }}</template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="120">
-        <template #default="{ row }"><el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'">{{ row.status }}</el-tag></template>
+        <template #default="{ row }"><el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'">{{ row.status === 'ACTIVE' ? '启用' : '停用' }}</el-tag></template>
       </el-table-column>
       <el-table-column label="角色" min-width="260">
         <template #default="{ row }">
@@ -101,7 +101,7 @@ onMounted(loadData)
       <p v-if="selectedUser">{{ selectedUser.username }}</p>
       <el-checkbox-group :model-value="selectedRoleIds" @update:model-value="updateSelectedRoles">
         <el-space direction="vertical" alignment="start">
-          <el-checkbox v-for="role in roles" :key="role.id" :label="role.id">{{ role.name }} ({{ role.code }})</el-checkbox>
+          <el-checkbox v-for="role in roles" :key="role.id" :label="role.id">{{ role.name }}</el-checkbox>
         </el-space>
       </el-checkbox-group>
       <template #footer>

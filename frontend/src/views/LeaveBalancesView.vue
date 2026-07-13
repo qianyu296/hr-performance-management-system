@@ -17,6 +17,19 @@ const adjustmentVisible = ref(false)
 const historyVisible = ref(false)
 const selectedBalance = ref<LeaveBalance | null>(null)
 const adjustment = reactive({ direction: 'INCREASE' as 'INCREASE' | 'DECREASE', deltaHours: 0, reason: '' })
+const balanceTypeLabels: Record<string, string> = {
+  ANNUAL: '年假',
+  DEV_ANNUAL: '年假',
+  SUMMARY_ANNUAL: '年假（汇总）',
+  TIME_OFF: '调休',
+}
+const balanceSourceLabels: Record<string, string> = {
+  LEAVE_APPROVAL: '请假审批',
+  LEAVE_CANCELLATION: '请假撤销',
+  MANUAL_ADJUSTMENT: '人工调整',
+  OVERTIME_APPROVAL: '加班审批',
+  OVERTIME_CANCELLATION: '加班撤销',
+}
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -81,7 +94,7 @@ onMounted(load)
     </template>
 
     <el-table v-loading="loading" :data="balances" class="data-table">
-      <el-table-column prop="balanceType" label="余额类型" min-width="150" />
+      <el-table-column label="余额类型" min-width="150"><template #default="{ row }">{{ balanceTypeLabels[row.balanceType] ?? row.balanceType }}</template></el-table-column>
       <el-table-column prop="balanceYear" label="年度" width="100" />
       <el-table-column prop="availableHours" label="可用时长(小时)" width="150" />
       <el-table-column prop="frozenHours" label="冻结时长(小时)" width="150" />
@@ -107,7 +120,7 @@ onMounted(load)
       <el-table :data="changes" class="data-table">
         <el-table-column label="变动" width="100"><template #default="{ row }"><el-tag :type="row.deltaHours >= 0 ? 'success' : 'danger'">{{ row.deltaHours >= 0 ? '+' : '' }}{{ row.deltaHours }}</el-tag></template></el-table-column>
         <el-table-column label="变动后" prop="afterHours" width="100" />
-        <el-table-column label="来源" prop="sourceType" width="150" />
+        <el-table-column label="来源" width="150"><template #default="{ row }">{{ balanceSourceLabels[row.sourceType] ?? row.sourceType }}</template></el-table-column>
         <el-table-column label="原因" prop="reason" min-width="180" />
         <el-table-column label="时间" min-width="160"><template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template></el-table-column>
       </el-table>

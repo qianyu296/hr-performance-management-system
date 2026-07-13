@@ -70,7 +70,7 @@ class PositionRankApiIntegrationTests {
         mockMvc.perform(post("/ranks").header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"code":"TEST_P5","name":"P5","rankOrder":5,"status":"ACTIVE"}
+                                {"code":"TEST_P5","name":"五级职级","rankOrder":5,"status":"ACTIVE"}
                                 """))
                 .andExpect(status().isOk());
         String id = jdbcTemplate.queryForObject("SELECT CAST(id AS CHAR) FROM hr_rank WHERE code='TEST_P5'", String.class);
@@ -79,7 +79,7 @@ class PositionRankApiIntegrationTests {
                 .andExpect(jsonPath("$.data[*].code", hasItem("TEST_P5")));
         mockMvc.perform(patch("/ranks/{id}", id).header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{" + "\"name\":\"P5 Senior\",\"rankOrder\":6,\"status\":\"ACTIVE\",\"version\":\"0\"}"))
+                        .content("{" + "\"name\":\"高级五级职级\",\"rankOrder\":6,\"status\":\"ACTIVE\",\"version\":\"0\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.version").value("1"));
     }
@@ -87,7 +87,7 @@ class PositionRankApiIntegrationTests {
     @Test
     void stalePositionVersionReturnsConflict() throws Exception {
         grantPermissions();
-        jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status, version) VALUES (98101, 'TEST_STALE', 'Stale', 'ACTIVE', 2)");
+        jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status, version) VALUES (98101, 'TEST_STALE', '岗位版本测试', 'ACTIVE', 2)");
         mockMvc.perform(patch("/positions/98101").header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -104,16 +104,16 @@ class PositionRankApiIntegrationTests {
     }
 
     private void grantPermissions() {
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (98002, 'TEST_ORG', 'Test Org', 'ACTIVE')");
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (98002, 'TEST_ORG', '组织测试', 'ACTIVE')");
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (98005, 98001, 98002)");
         jdbcTemplate.update("""
                 INSERT INTO sys_menu (id, name, permission_code, menu_type, status)
-                VALUES (98903, 'Org read', 'org:read', 'BUTTON', 'ACTIVE')
+                VALUES (98903, '组织读取', 'org:read', 'BUTTON', 'ACTIVE')
                 ON DUPLICATE KEY UPDATE name = VALUES(name)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO sys_menu (id, name, permission_code, menu_type, status)
-                VALUES (98904, 'Org manage', 'org:manage', 'BUTTON', 'ACTIVE')
+                VALUES (98904, '组织管理', 'org:manage', 'BUTTON', 'ACTIVE')
                 ON DUPLICATE KEY UPDATE name = VALUES(name)
                 """);
         Long readMenuId = jdbcTemplate.queryForObject("SELECT id FROM sys_menu WHERE permission_code='org:read' AND deleted=0", Long.class);

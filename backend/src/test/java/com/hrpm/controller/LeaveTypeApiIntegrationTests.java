@@ -39,11 +39,11 @@ class LeaveTypeApiIntegrationTests {
     @BeforeEach
     void seedHrWithAttendanceManagementPermission() {
         cleanFixture();
-        jdbcTemplate.update("INSERT INTO hr_department (id, code, name, path, effective_date, status) VALUES (98005, 'LT_TEST', 'Leave Type Test', '/98005/', ?, 'ACTIVE')", LocalDate.of(2026, 1, 1));
-        jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status) VALUES (98006, 'LT_TEST', 'Leave Type Test Position', 'ACTIVE')");
-        jdbcTemplate.update("INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date) VALUES (?, 'LT-TEST-001', 'Leave Type HR', 98005, 98006, 'FORMAL', ?)", EMPLOYEE_ID, LocalDate.of(2025, 1, 1));
+        jdbcTemplate.update("INSERT INTO hr_department (id, code, name, path, effective_date, status) VALUES (98005, 'LT_TEST', '请假类型测试部门', '/98005/', ?, 'ACTIVE')", LocalDate.of(2026, 1, 1));
+        jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status) VALUES (98006, 'LT_TEST', '请假类型测试岗位', 'ACTIVE')");
+        jdbcTemplate.update("INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date) VALUES (?, 'LT-TEST-001', '请假类型人事专员', 98005, 98006, 'FORMAL', ?)", EMPLOYEE_ID, LocalDate.of(2025, 1, 1));
         jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version) VALUES (?, 'leave-type-hr', 'unused', ?, 'ACTIVE', 0)", HR_USER_ID, EMPLOYEE_ID);
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'LEAVE_TYPE_HR', 'Leave Type HR', 'ACTIVE')", ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'LEAVE_TYPE_HR', '请假类型人事专员', 'ACTIVE')", ROLE_ID);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (98007, ?, ?)", HR_USER_ID, ROLE_ID);
         jdbcTemplate.update("""
                 INSERT INTO sys_role_menu (id, role_id, menu_id)
@@ -103,6 +103,18 @@ class LeaveTypeApiIntegrationTests {
                         .content("{\"version\":\"0\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+    }
+
+    @Test
+    void seededSystemMenuUsesChineseDisplayName() {
+        assertEquals("系统管理", jdbcTemplate.queryForObject(
+                "SELECT name FROM sys_menu WHERE permission_code = 'system:manage' AND deleted = 0", String.class));
+    }
+
+    @Test
+    void seededHrPositionUsesChineseDisplayName() {
+        assertEquals("人力资源专员", jdbcTemplate.queryForObject(
+                "SELECT name FROM hr_position WHERE code = 'DEV-HR-SPECIALIST' AND deleted = 0", String.class));
     }
 
     private void cleanFixture() {

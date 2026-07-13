@@ -65,15 +65,15 @@ class LeaveRequestApiIntegrationTests {
 
         jdbcTemplate.update("""
                 INSERT INTO hr_department (id, code, name, path, effective_date, status)
-                VALUES (?, 'TEST', 'Test Department', ?, ?, 'ACTIVE')
+                VALUES (?, 'TEST', '测试部门', ?, ?, 'ACTIVE')
                 """, 91003L, "/91003/", LocalDate.of(2026, 1, 1));
         jdbcTemplate.update("""
                 INSERT INTO hr_position (id, code, name, status)
-                VALUES (?, 'TEST_POSITION', 'Test Position', 'ACTIVE')
+                VALUES (?, 'TEST_POSITION', '测试岗位', 'ACTIVE')
                 """, 91002L);
         jdbcTemplate.update("""
                 INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date)
-                VALUES (?, 'E-TEST-001', 'Test Employee', ?, ?, 'FORMAL', ?)
+                VALUES (?, 'E-TEST-001', '测试员工', ?, ?, 'FORMAL', ?)
                 """, 91001L, 91003L, 91002L, LocalDate.of(2025, 1, 1));
         jdbcTemplate.update("""
                 INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version)
@@ -81,7 +81,7 @@ class LeaveRequestApiIntegrationTests {
                 """, 90001L, new BCryptPasswordEncoder().encode("correct-password"), 91001L);
         jdbcTemplate.update("""
                 INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, status)
-                VALUES (?, 'ANNUAL', 'Annual Leave', 1, 1.00, 'ACTIVE')
+                VALUES (?, 'ANNUAL', '年假', 1, 1.00, 'ACTIVE')
                 """, 92001L);
     }
 
@@ -126,7 +126,7 @@ class LeaveRequestApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value("92001"))
                 .andExpect(jsonPath("$.data[0].code").value("ANNUAL"))
-                .andExpect(jsonPath("$.data[0].name").value("Annual Leave"));
+                .andExpect(jsonPath("$.data[0].name").value("年假"));
     }
 
     @Test
@@ -146,7 +146,7 @@ class LeaveRequestApiIntegrationTests {
                 .andExpect(jsonPath("$.data[0].id").value("94007"))
                 .andExpect(jsonPath("$.data[0].requestNo").value("LR94007"))
                 .andExpect(jsonPath("$.data[0].status").value("DRAFT"))
-                .andExpect(jsonPath("$.data[0].leaveTypeName").value("Annual Leave"));
+                .andExpect(jsonPath("$.data[0].leaveTypeName").value("年假"));
     }
 
     @Test
@@ -203,9 +203,9 @@ class LeaveRequestApiIntegrationTests {
                         .header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"calendarYear":2026,"name":"2026 Test Calendar","timeZone":"UTC","status":"ACTIVE","days":[
+                                {"calendarYear":2026,"name":"2026测试日历","timeZone":"UTC","status":"ACTIVE","days":[
                                   {"workDate":"2026-07-27","workday":true,"workHours":4.00},
-                                  {"workDate":"2026-07-28","workday":false,"workHours":0.00,"holidayName":"Test Holiday"}
+                                  {"workDate":"2026-07-28","workday":false,"workHours":0.00,"holidayName":"测试假日"}
                                 ]}
                                 """))
                 .andExpect(status().isOk())
@@ -269,7 +269,7 @@ class LeaveRequestApiIntegrationTests {
         jdbcTemplate.update("UPDATE wf_template_node SET node_type = 'DIRECT_MANAGER', approver_rule = JSON_OBJECT('type', 'DIRECT_MANAGER') WHERE id = ?", 95003L);
         jdbcTemplate.update("""
                 INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date)
-                VALUES (?, 'E-TEST-MANAGER', 'Test Manager', ?, ?, 'FORMAL', ?)
+                VALUES (?, 'E-TEST-MANAGER', '测试经理', ?, ?, 'FORMAL', ?)
                 """, 91004L, 91003L, 91002L, LocalDate.of(2024, 1, 1));
         jdbcTemplate.update("UPDATE hr_employee SET manager_employee_id = ? WHERE id = ?", 91004L, 91001L);
         jdbcTemplate.update("""
@@ -636,17 +636,17 @@ class LeaveRequestApiIntegrationTests {
     }
 
     private void grantLeaveSubmitPermission() {
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'TEST_ATTENDANCE_SUBMIT', 'Test attendance submit', 'ACTIVE')", 92002L);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'TEST_ATTENDANCE_SUBMIT', '假勤申请测试', 'ACTIVE')", 92002L);
         jdbcTemplate.update("""
                 INSERT INTO sys_menu (id, name, permission_code, menu_type, status)
-                VALUES (?, 'Leave submit', 'attendance:submit', 'BUTTON', 'ACTIVE')
+                VALUES (?, '请假提交', 'attendance:submit', 'BUTTON', 'ACTIVE')
                 """, 92003L);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 92004L, 90001L, 92002L);
         jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 92005L, 92002L, 92003L);
     }
 
     private void grantBalanceAdjustmentPermission() {
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'TEST_BALANCE_ADJUST', 'Test balance adjust', 'ACTIVE')", 92006L);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'TEST_BALANCE_ADJUST', '余额调整测试', 'ACTIVE')", 92006L);
         long balanceAdjustMenuId = jdbcTemplate.queryForObject(
                 "SELECT id FROM sys_menu WHERE permission_code = 'attendance:balance:adjust' AND deleted = 0", Long.class);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 92008L, 90001L, 92006L);
@@ -689,15 +689,15 @@ class LeaveRequestApiIntegrationTests {
         jdbcTemplate.update("""
                 DELETE d FROM att_work_calendar_day d
                 JOIN att_work_calendar c ON c.id = d.calendar_id
-                WHERE c.name = '2026 Test Calendar'
+                WHERE c.name = '2026测试日历'
                 """);
-        jdbcTemplate.update("DELETE FROM att_work_calendar WHERE name = '2026 Test Calendar'");
+        jdbcTemplate.update("DELETE FROM att_work_calendar WHERE name = '2026测试日历'");
     }
 
     private void seedLeaveWorkflowTemplate() {
         jdbcTemplate.update("""
                 INSERT INTO wf_template (id, code, name, business_type, priority, template_version, status)
-                VALUES (?, 'TEST_LEAVE', 'Test leave workflow', 'LEAVE', 10, 1, 'ACTIVE')
+                VALUES (?, 'TEST_LEAVE', '测试请假流程', 'LEAVE', 10, 1, 'ACTIVE')
                 """, 95001L);
         jdbcTemplate.update("INSERT INTO wf_template_scope (id, template_id, department_id) VALUES (?, ?, ?)",
                 95002L, 95001L, 91003L);
