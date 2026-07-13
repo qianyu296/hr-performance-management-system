@@ -1,6 +1,8 @@
-package com.hrpm.common.web;
+package com.hrpm.controller;
 
-import com.hrpm.common.api.ApiResponse;
+
+import com.hrpm.common.ApiResponse;
+
 import java.time.Instant;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
