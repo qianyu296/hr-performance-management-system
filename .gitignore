@@ -22,3 +22,6 @@ Thumbs.db
 
 # Local code intelligence index
 .codegraph/
+
+# Local Git worktrees
+.worktrees/
