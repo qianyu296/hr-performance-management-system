@@ -10,6 +10,8 @@ export interface LeaveTypeOption {
   name: string
   deductBalance: boolean
 }
+export interface ManagedLeaveType extends LeaveTypeOption { minUnitHours: number; annualQuota: number | null; status: 'ACTIVE' | 'INACTIVE'; version: string }
+export interface LeaveTypePayload { code?: string; name: string; deductBalance: boolean; annualQuota: number | null; minUnitHours: number; version?: string }
 
 export interface LeaveRequestItem {
   id: string
@@ -96,6 +98,10 @@ export async function fetchLeaveTypes() {
   const response = await http.get<ApiResponse<LeaveTypeOption[]>>('/leave-types')
   return response.data.data
 }
+export async function fetchManagedLeaveTypes() { const response = await http.get<ApiResponse<ManagedLeaveType[]>>('/leave-types', { params: { includeInactive: true } }); return response.data.data }
+export async function createLeaveType(payload: LeaveTypePayload) { const response = await http.post<ApiResponse<ManagedLeaveType>>('/leave-types', payload); return response.data.data }
+export async function updateLeaveType(id: string, payload: LeaveTypePayload) { const response = await http.patch<ApiResponse<ManagedLeaveType>>(`/leave-types/${id}`, payload); return response.data.data }
+export async function disableLeaveType(id: string, version: string) { const response = await http.post<ApiResponse<ManagedLeaveType>>(`/leave-types/${id}/disable`, { version }); return response.data.data }
 
 export async function fetchLeaveRequests() {
   const response = await http.get<ApiResponse<LeaveRequestItem[]>>('/leave-requests')

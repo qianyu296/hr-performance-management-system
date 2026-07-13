@@ -18,6 +18,10 @@ public interface LeaveBalanceMapper {
     @Select("SELECT id, employee_id AS employeeId, balance_type AS balanceType, balance_year AS balanceYear, available_hours AS availableHours, frozen_hours AS frozenHours, version FROM att_leave_balance WHERE id = #{id} AND deleted = 0")
     LeaveBalance findById(@Param("id") long id);
 
+    @Insert("INSERT IGNORE INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours) VALUES (#{id}, #{employeeId}, #{balanceType}, #{balanceYear}, #{availableHours})")
+    int insert(@Param("id") long id, @Param("employeeId") long employeeId, @Param("balanceType") String balanceType,
+               @Param("balanceYear") int balanceYear, @Param("availableHours") BigDecimal availableHours);
+
     @Update("UPDATE att_leave_balance SET available_hours = #{availableHours}, version = version + 1 WHERE id = #{id} AND version = #{version} AND deleted = 0")
     int updateAvailableHours(@Param("id") long id, @Param("version") int version, @Param("availableHours") BigDecimal availableHours);
 

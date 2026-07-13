@@ -172,6 +172,27 @@ paths:
       operationId: updateEmployee
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateEmployeeRequest'}}}}
       responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /leave-types:
+    get:
+      operationId: listLeaveTypes
+      parameters: [{name: includeInactive, in: query, schema: {type: boolean, default: false}}]
+      responses: {'200': {$ref: '#/components/responses/Success'}, '403': {$ref: '#/components/responses/Error'}}
+    post:
+      operationId: createLeaveType
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateLeaveTypeRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /leave-types/{id}:
+    patch:
+      operationId: updateLeaveType
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateLeaveTypeRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '400': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
+  /leave-types/{id}/disable:
+    post:
+      operationId: disableLeaveType
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: int64}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DisableLeaveTypeRequest'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '403': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}
   /{resource}:
     parameters: [{name: resource, in: path, required: true, schema: {type: string, enum: [users, roles, menus, dictionaries, departments, positions, ranks, employees, personnel-changes, contracts, leave-types, work-calendars, leave-requests, overtime-requests, goals, performance/metrics, performance/schemes, performance/cycles, todos, exports]}}]
     get:
@@ -316,6 +337,9 @@ components:
     LeaveBalance: {type: object, required: [id, employeeId, balanceType, balanceYear, availableHours, frozenHours, version], properties: {id: {type: string, format: int64}, employeeId: {type: string, format: int64}, balanceType: {type: string}, balanceYear: {type: integer}, availableHours: {type: number}, frozenHours: {type: number}, version: {type: string}}}
     LeaveBalanceChange: {type: object, required: [id, balanceType, deltaHours, beforeHours, afterHours, sourceType, reason, createdTime], properties: {id: {type: string, format: int64}, balanceType: {type: string}, deltaHours: {type: number}, beforeHours: {type: number}, afterHours: {type: number}, sourceType: {type: string, enum: [MANUAL_ADJUSTMENT, LEAVE_APPROVAL, LEAVE_CANCELLATION, TIME_OFF, OVERTIME_CANCELLATION]}, reason: {type: string}, createdBy: {type: [string, 'null'], format: int64}, createdTime: {type: string, format: date-time}}}
     AdjustLeaveBalanceRequest: {type: object, required: [deltaHours, direction, reason, version], properties: {deltaHours: {type: number, exclusiveMinimum: 0}, direction: {type: string, enum: [INCREASE, DECREASE]}, reason: {type: string, minLength: 1, maxLength: 500}, version: {type: string}}}
+    CreateLeaveTypeRequest: {type: object, required: [code, name, deductBalance, minUnitHours], properties: {code: {type: string, maxLength: 64}, name: {type: string, maxLength: 128}, deductBalance: {type: boolean}, annualQuota: {type: [number, 'null'], exclusiveMinimum: 0}, minUnitHours: {type: number, exclusiveMinimum: 0}}}
+    UpdateLeaveTypeRequest: {type: object, required: [name, deductBalance, minUnitHours, version], properties: {name: {type: string, maxLength: 128}, deductBalance: {type: boolean}, annualQuota: {type: [number, 'null'], exclusiveMinimum: 0}, minUnitHours: {type: number, exclusiveMinimum: 0}, version: {type: string}}}
+    DisableLeaveTypeRequest: {type: object, required: [version], properties: {version: {type: string}}}
     LeaveBalanceResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {$ref: '#/components/schemas/LeaveBalance'}}}]}
     LeaveBalanceListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/LeaveBalance'}}}}]}
     LeaveBalanceChangeListResponse: {allOf: [{$ref: '#/components/schemas/ApiResponse'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/LeaveBalanceChange'}}}}]}
