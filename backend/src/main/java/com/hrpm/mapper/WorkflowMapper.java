@@ -52,12 +52,26 @@ public interface WorkflowMapper {
             @Param("nodeSnapshot") String nodeSnapshot, @Param("assigneeUserId") long assigneeUserId);
 
     @Select("""
-            SELECT t.id, t.instance_id AS instanceId, t.assignee_user_id AS assigneeUserId, t.status, t.version,
+            SELECT t.id, t.instance_id AS instanceId, t.node_no AS nodeNo, t.assignee_user_id AS assigneeUserId, t.status, t.version,
                    i.business_id AS businessId
             FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0
             WHERE t.id = #{id} AND t.deleted = 0
             """)
     WorkflowTask findTask(@Param("id") long id);
+
+    @Select("""
+            SELECT n.node_no AS nodeNo, n.approver_rule AS approverRule
+            FROM wf_instance i
+            JOIN wf_template_node n ON n.template_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(i.template_snapshot, '$.templateId')) AS UNSIGNED)
+              AND n.deleted = 0
+            WHERE i.id = #{instanceId} AND n.node_no > #{nodeNo}
+            ORDER BY n.node_no
+            LIMIT 1
+            """)
+    WorkflowTemplateNode findNextNode(@Param("instanceId") long instanceId, @Param("nodeNo") int nodeNo);
+
+    @Update("UPDATE wf_instance SET current_node_no = #{nodeNo}, version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS'")
+    int advanceInstance(@Param("id") long id, @Param("nodeNo") int nodeNo);
 
     @Select("""
             SELECT t.id, i.business_type AS businessType, i.business_id AS businessId,

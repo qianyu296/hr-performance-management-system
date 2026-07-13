@@ -26,8 +26,6 @@ class SystemAccessApiIntegrationTests {
     private static final long ADMIN_ROLE_ID = 87011L;
     private static final long INITIAL_ROLE_ID = 87012L;
     private static final long REPLACEMENT_ROLE_ID = 87013L;
-    private static final long SYSTEM_MENU_ID = 87021L;
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -36,6 +34,8 @@ class SystemAccessApiIntegrationTests {
 
     @Autowired
     private TokenService tokenService;
+
+    private long systemManageMenuId;
 
     @BeforeEach
     void setUp() {
@@ -46,8 +46,9 @@ class SystemAccessApiIntegrationTests {
         jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_ADMIN', 'System access admin', 'ACTIVE', 0)", ADMIN_ROLE_ID);
         jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_INITIAL', 'Initial role', 'ACTIVE', 0)", INITIAL_ROLE_ID);
         jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_REPLACEMENT', 'Replacement role', 'ACTIVE', 0)", REPLACEMENT_ROLE_ID);
-        jdbcTemplate.update("INSERT INTO sys_menu (id, name, permission_code, menu_type, route_path, sort_no, status) VALUES (?, 'System access', 'system:manage', 'BUTTON', '/system/users', 1, 'ACTIVE')", SYSTEM_MENU_ID);
-        jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 87031L, ADMIN_ROLE_ID, SYSTEM_MENU_ID);
+        systemManageMenuId = jdbcTemplate.queryForObject(
+                "SELECT id FROM sys_menu WHERE permission_code = 'system:manage' AND deleted = 0", Long.class);
+        jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 87031L, ADMIN_ROLE_ID, systemManageMenuId);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 87041L, ADMIN_USER_ID, ADMIN_ROLE_ID);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 87042L, TARGET_USER_ID, INITIAL_ROLE_ID);
     }
@@ -60,7 +61,6 @@ class SystemAccessApiIntegrationTests {
     private void clearFixtures() {
         jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id IN (?, ?, ?)", ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
         jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (?, ?)", ADMIN_USER_ID, TARGET_USER_ID);
-        jdbcTemplate.update("DELETE FROM sys_menu WHERE id = ?", SYSTEM_MENU_ID);
         jdbcTemplate.update("DELETE FROM sys_role WHERE id IN (?, ?, ?)", ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", ADMIN_USER_ID, TARGET_USER_ID);
     }

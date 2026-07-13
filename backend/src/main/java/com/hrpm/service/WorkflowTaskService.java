@@ -7,25 +7,35 @@ import com.hrpm.entity.LeaveBalanceRow;
 import com.hrpm.entity.LeaveRequestSubmission;
 import com.hrpm.entity.WorkflowTask;
 import com.hrpm.entity.WorkflowTaskListRow;
+import com.hrpm.entity.WorkflowTemplateNode;
 import com.hrpm.mapper.LeaveRequestMapper;
 import com.hrpm.mapper.WorkflowMapper;
 import com.hrpm.vo.WorkflowTaskListVO;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class WorkflowTaskService {
     private final WorkflowMapper workflowMapper;
     private final LeaveRequestMapper leaveRequestMapper;
     private final IdGenerator idGenerator;
+    private final ObjectMapper objectMapper;
 
     public WorkflowTaskService(WorkflowMapper workflowMapper, LeaveRequestMapper leaveRequestMapper, IdGenerator idGenerator) {
+        this(workflowMapper, leaveRequestMapper, idGenerator, new ObjectMapper());
+    }
+
+    @Autowired
+    public WorkflowTaskService(WorkflowMapper workflowMapper, LeaveRequestMapper leaveRequestMapper, IdGenerator idGenerator, ObjectMapper objectMapper) {
         this.workflowMapper = workflowMapper;
         this.leaveRequestMapper = leaveRequestMapper;
         this.idGenerator = idGenerator;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -36,6 +46,16 @@ public class WorkflowTaskService {
         }
         if (task.version() != version || workflowMapper.approveTask(taskId, userId, version) != 1) {
             throw new IllegalStateException("Workflow task changed before approval");
+        }
+        WorkflowTemplateNode nextNode = workflowMapper.findNextNode(task.instanceId(), task.nodeNo());
+        if (nextNode != null) {
+            long assigneeUserId = assigneeUserId(nextNode);
+            if (workflowMapper.advanceInstance(task.instanceId(), nextNode.nodeNo()) != 1) {
+                throw new IllegalStateException("Workflow instance changed before approval");
+            }
+            workflowMapper.insertTask(idGenerator.nextId(), task.instanceId(), nextNode.nodeNo(), nextNode.approverRule(), assigneeUserId);
+            workflowMapper.insertActionLog(idGenerator.nextId(), task.instanceId(), taskId, userId, "APPROVE", comment);
+            return "IN_PROGRESS";
         }
         LeaveRequestSubmission request = leaveRequestMapper.findSubmission(task.businessId());
         if (request == null || !"IN_PROGRESS".equals(request.status())) {
@@ -80,5 +100,17 @@ public class WorkflowTaskService {
         }
         workflowMapper.insertActionLog(idGenerator.nextId(), task.instanceId(), taskId, userId, "REJECT", comment);
         return "REJECTED";
+    }
+
+    private long assigneeUserId(WorkflowTemplateNode node) {
+        try {
+            var userId = objectMapper.readTree(node.approverRule()).get("userId");
+            if (userId == null || !userId.canConvertToLong()) throw new WorkflowTaskInvalidException();
+            return userId.longValue();
+        } catch (WorkflowTaskInvalidException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new WorkflowTaskInvalidException();
+        }
     }
 }

@@ -225,6 +225,77 @@ class LeaveRequestApiIntegrationTests {
     }
 
     @Test
+    void multiNodeApprovalKeepsLeaveInProgressUntilFinalApproverActs() throws Exception {
+        grantLeaveSubmitPermission();
+        seedLeaveWorkflowTemplate();
+        jdbcTemplate.update("""
+                INSERT INTO sys_user (id, username, password_hash, status, session_version)
+                VALUES (?, 'second-approver', ?, 'ACTIVE', 1)
+                """, 90002L, new BCryptPasswordEncoder().encode("correct-password"));
+        jdbcTemplate.update("""
+                INSERT INTO wf_template_node (id, template_id, node_no, node_type, approver_rule)
+                VALUES (?, ?, 2, 'SPECIFIC_USER', JSON_OBJECT('userId', 90002))
+                """, 95004L, 95001L);
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
+                VALUES (?, ?, 'ANNUAL', 2026, 16.00)
+                """, 93001L, 91001L);
+        long requestId = 94009L;
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_request (
+                    id, request_no, employee_id, leave_type_id, start_time, end_time,
+                    duration_hours, reason, status, organization_snapshot)
+                VALUES (?, 'LR94009', ?, ?, ?, ?, 8.00, 'Annual leave', 'DRAFT', '{}')
+                """, requestId, 91001L, 92001L,
+                Instant.parse("2026-07-21T09:00:00Z"), Instant.parse("2026-07-21T17:00:00Z"));
+
+        mockMvc.perform(post("/leave-requests/{id}/submit", requestId)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-submit-multi-node-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isOk());
+        long firstTaskId = jdbcTemplate.queryForObject("""
+                SELECT id FROM wf_task
+                WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)
+                  AND node_no = 1
+                """, Long.class, requestId);
+
+        mockMvc.perform(post("/workflow/tasks/{id}/approve", firstTaskId)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-approve-multi-node-first-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\",\"comment\":\"manager approved\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+
+        org.junit.jupiter.api.Assertions.assertEquals("IN_PROGRESS",
+                jdbcTemplate.queryForObject("SELECT status FROM att_leave_request WHERE id = ?", String.class, requestId));
+        org.junit.jupiter.api.Assertions.assertEquals(new java.math.BigDecimal("16.00"),
+                jdbcTemplate.queryForObject("SELECT available_hours FROM att_leave_balance WHERE id = ?", java.math.BigDecimal.class, 93001L));
+        long secondTaskId = jdbcTemplate.queryForObject("""
+                SELECT id FROM wf_task
+                WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)
+                  AND node_no = 2 AND status = 'PENDING'
+                """, Long.class, requestId);
+
+        mockMvc.perform(post("/workflow/tasks/{id}/approve", secondTaskId)
+                        .header("Authorization", "Bearer " + tokenService.issue(90002L, "second-approver", 1))
+                        .header("Idempotency-Key", "leave-approve-multi-node-final-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\",\"comment\":\"hr approved\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+
+        org.junit.jupiter.api.Assertions.assertEquals("APPROVED",
+                jdbcTemplate.queryForObject("SELECT status FROM att_leave_request WHERE id = ?", String.class, requestId));
+        org.junit.jupiter.api.Assertions.assertEquals(new java.math.BigDecimal("8.00"),
+                jdbcTemplate.queryForObject("SELECT available_hours FROM att_leave_balance WHERE id = ?", java.math.BigDecimal.class, 93001L));
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM att_balance_change WHERE source_type = 'LEAVE_APPROVAL' AND source_id = ?", Integer.class, requestId));
+    }
+
+    @Test
     void nonAssigneeCannotApprovePendingWorkflowTask() throws Exception {
         long requestId = seedSubmittedLeaveRequest(94004L, "LR94004", "2026-07-16T09:00:00Z", "2026-07-16T17:00:00Z");
         long taskId = findTaskId(requestId);
