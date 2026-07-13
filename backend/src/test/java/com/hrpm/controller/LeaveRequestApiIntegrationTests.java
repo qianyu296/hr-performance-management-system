@@ -260,6 +260,7 @@ class LeaveRequestApiIntegrationTests {
                 WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)
                   AND node_no = 1
                 """, Long.class, requestId);
+        jdbcTemplate.update("UPDATE wf_template_node SET approver_rule = JSON_OBJECT('userId', 90001) WHERE id = ?", 95004L);
 
         mockMvc.perform(post("/workflow/tasks/{id}/approve", firstTaskId)
                         .header("Authorization", bearerToken())

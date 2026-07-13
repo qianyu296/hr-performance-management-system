@@ -28,13 +28,21 @@ public interface WorkflowMapper {
     WorkflowTemplate findLeaveTemplate(@Param("departmentId") long departmentId);
 
     @Select("""
-            SELECT node_no AS nodeNo, approver_rule AS approverRule
+            SELECT node_no AS nodeNo, node_type AS nodeType, approver_rule AS approverRule
             FROM wf_template_node
             WHERE template_id = #{templateId} AND deleted = 0
             ORDER BY node_no
             LIMIT 1
             """)
     WorkflowTemplateNode findFirstNode(@Param("templateId") long templateId);
+
+    @Select("""
+            SELECT node_no AS nodeNo, node_type AS nodeType, approver_rule AS approverRule
+            FROM wf_template_node
+            WHERE template_id = #{templateId} AND deleted = 0
+            ORDER BY node_no
+            """)
+    List<WorkflowTemplateNode> findNodes(@Param("templateId") long templateId);
 
     @Insert("""
             INSERT INTO wf_instance (id, business_type, business_id, initiator_user_id, template_snapshot, status, current_node_no)
@@ -52,7 +60,8 @@ public interface WorkflowMapper {
             @Param("nodeSnapshot") String nodeSnapshot, @Param("assigneeUserId") long assigneeUserId);
 
     @Select("""
-            SELECT t.id, t.instance_id AS instanceId, t.node_no AS nodeNo, t.assignee_user_id AS assigneeUserId, t.status, t.version,
+            SELECT t.id, t.instance_id AS instanceId, t.node_no AS nodeNo, t.node_snapshot AS nodeSnapshot,
+                   t.assignee_user_id AS assigneeUserId, t.status, t.version,
                    i.business_id AS businessId
             FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0
             WHERE t.id = #{id} AND t.deleted = 0
@@ -60,15 +69,18 @@ public interface WorkflowMapper {
     WorkflowTask findTask(@Param("id") long id);
 
     @Select("""
-            SELECT n.node_no AS nodeNo, n.approver_rule AS approverRule
-            FROM wf_instance i
-            JOIN wf_template_node n ON n.template_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(i.template_snapshot, '$.templateId')) AS UNSIGNED)
-              AND n.deleted = 0
-            WHERE i.id = #{instanceId} AND n.node_no > #{nodeNo}
-            ORDER BY n.node_no
-            LIMIT 1
+            SELECT template_snapshot
+            FROM wf_instance
+            WHERE id = #{id} AND deleted = 0
             """)
-    WorkflowTemplateNode findNextNode(@Param("instanceId") long instanceId, @Param("nodeNo") int nodeNo);
+    String findInstanceSnapshot(@Param("id") long id);
+
+    @Select("""
+            SELECT id
+            FROM sys_user
+            WHERE id = #{id} AND status = 'ACTIVE' AND deleted = 0
+            """)
+    Long findActiveUserId(@Param("id") long id);
 
     @Update("UPDATE wf_instance SET current_node_no = #{nodeNo}, version = version + 1 WHERE id = #{id} AND status = 'IN_PROGRESS'")
     int advanceInstance(@Param("id") long id, @Param("nodeNo") int nodeNo);

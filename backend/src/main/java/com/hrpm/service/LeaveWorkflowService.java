@@ -6,6 +6,8 @@ import com.hrpm.common.IdGenerator;
 import com.hrpm.entity.LeaveRequestSubmission;
 import com.hrpm.entity.WorkflowTemplate;
 import com.hrpm.entity.WorkflowTemplateNode;
+import com.hrpm.entity.WorkflowInstanceSnapshot;
+import com.hrpm.entity.WorkflowNodeSnapshot;
 import com.hrpm.mapper.LeaveRequestMapper;
 import com.hrpm.mapper.WorkflowMapper;
 
@@ -13,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +25,15 @@ public class LeaveWorkflowService {
     private final LeaveRequestMapper leaveRequestMapper;
     private final IdGenerator idGenerator;
     private final ObjectMapper objectMapper;
+    private final WorkflowApproverResolver workflowApproverResolver;
 
     public LeaveWorkflowService(WorkflowMapper workflowMapper, LeaveRequestMapper leaveRequestMapper,
-            IdGenerator idGenerator, ObjectMapper objectMapper) {
+            IdGenerator idGenerator, ObjectMapper objectMapper, WorkflowApproverResolver workflowApproverResolver) {
         this.workflowMapper = workflowMapper;
         this.leaveRequestMapper = leaveRequestMapper;
         this.idGenerator = idGenerator;
         this.objectMapper = objectMapper;
+        this.workflowApproverResolver = workflowApproverResolver;
     }
 
     @Transactional
@@ -38,12 +43,19 @@ public class LeaveWorkflowService {
         if (template == null) {
             throw new WorkflowTemplateMissingException();
         }
-        WorkflowTemplateNode node = workflowMapper.findFirstNode(template.id());
-        long assigneeUserId = assigneeUserId(node);
+        List<WorkflowNodeSnapshot> nodeSnapshots = workflowMapper.findNodes(template.id()).stream()
+                .map(node -> new WorkflowNodeSnapshot(node.nodeNo(), node.nodeType(), parseRule(node), workflowApproverResolver.resolve(node)))
+                .toList();
+        if (nodeSnapshots.isEmpty()) {
+            throw new WorkflowTemplateMissingException();
+        }
+        WorkflowNodeSnapshot firstNode = nodeSnapshots.get(0);
+        String templateSnapshot = serialize(new WorkflowInstanceSnapshot(
+                template.id(), template.templateVersion(), request.employeeId(), request.departmentId(), nodeSnapshots));
         long instanceId = idGenerator.nextId();
         workflowMapper.insertInstance(instanceId, request.id(), userId,
-                "{\"templateId\":" + template.id() + ",\"templateVersion\":" + template.templateVersion() + "}", node.nodeNo());
-        workflowMapper.insertTask(idGenerator.nextId(), instanceId, node.nodeNo(), node.approverRule(), assigneeUserId);
+                templateSnapshot, firstNode.nodeNo());
+        workflowMapper.insertTask(idGenerator.nextId(), instanceId, firstNode.nodeNo(), serialize(firstNode), firstNode.assigneeUserId());
         if (leaveRequestMapper.markSubmitted(request.id(), request.employeeId(), request.version(), instanceId) != 1) {
             throw new IllegalStateException("Leave request changed before submission");
         }
@@ -72,21 +84,19 @@ public class LeaveWorkflowService {
         }
     }
 
-    private long assigneeUserId(WorkflowTemplateNode node) {
-        if (node == null) {
+    private JsonNode parseRule(WorkflowTemplateNode node) {
+        try {
+            return objectMapper.readTree(node.approverRule());
+        } catch (Exception exception) {
             throw new WorkflowTemplateMissingException();
         }
+    }
+
+    private String serialize(Object value) {
         try {
-            JsonNode userId = objectMapper.readTree(node.approverRule()).get("userId");
-            if (userId == null || !userId.canConvertToLong()) {
-                throw new WorkflowTemplateMissingException();
-            }
-            return userId.longValue();
+            return objectMapper.writeValueAsString(value);
         } catch (Exception exception) {
-            if (exception instanceof WorkflowTemplateMissingException workflowException) {
-                throw workflowException;
-            }
-            throw new WorkflowTemplateMissingException();
+            throw new IllegalStateException("Unable to create workflow snapshot", exception);
         }
     }
 }

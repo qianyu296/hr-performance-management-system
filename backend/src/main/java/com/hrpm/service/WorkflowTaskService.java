@@ -7,7 +7,8 @@ import com.hrpm.entity.LeaveBalanceRow;
 import com.hrpm.entity.LeaveRequestSubmission;
 import com.hrpm.entity.WorkflowTask;
 import com.hrpm.entity.WorkflowTaskListRow;
-import com.hrpm.entity.WorkflowTemplateNode;
+import com.hrpm.entity.WorkflowInstanceSnapshot;
+import com.hrpm.entity.WorkflowNodeSnapshot;
 import com.hrpm.mapper.LeaveRequestMapper;
 import com.hrpm.mapper.WorkflowMapper;
 import com.hrpm.vo.WorkflowTaskListVO;
@@ -47,13 +48,12 @@ public class WorkflowTaskService {
         if (task.version() != version || workflowMapper.approveTask(taskId, userId, version) != 1) {
             throw new IllegalStateException("Workflow task changed before approval");
         }
-        WorkflowTemplateNode nextNode = workflowMapper.findNextNode(task.instanceId(), task.nodeNo());
+        WorkflowNodeSnapshot nextNode = nextNode(task.instanceId(), task.nodeNo());
         if (nextNode != null) {
-            long assigneeUserId = assigneeUserId(nextNode);
             if (workflowMapper.advanceInstance(task.instanceId(), nextNode.nodeNo()) != 1) {
                 throw new IllegalStateException("Workflow instance changed before approval");
             }
-            workflowMapper.insertTask(idGenerator.nextId(), task.instanceId(), nextNode.nodeNo(), nextNode.approverRule(), assigneeUserId);
+            workflowMapper.insertTask(idGenerator.nextId(), task.instanceId(), nextNode.nodeNo(), serialize(nextNode), nextNode.assigneeUserId());
             workflowMapper.insertActionLog(idGenerator.nextId(), task.instanceId(), taskId, userId, "APPROVE", comment);
             return "IN_PROGRESS";
         }
@@ -102,15 +102,24 @@ public class WorkflowTaskService {
         return "REJECTED";
     }
 
-    private long assigneeUserId(WorkflowTemplateNode node) {
+    private WorkflowNodeSnapshot nextNode(long instanceId, int currentNodeNo) {
         try {
-            var userId = objectMapper.readTree(node.approverRule()).get("userId");
-            if (userId == null || !userId.canConvertToLong()) throw new WorkflowTaskInvalidException();
-            return userId.longValue();
-        } catch (WorkflowTaskInvalidException exception) {
-            throw exception;
+            WorkflowInstanceSnapshot snapshot = objectMapper.readValue(
+                    workflowMapper.findInstanceSnapshot(instanceId), WorkflowInstanceSnapshot.class);
+            return snapshot.nodes().stream()
+                    .filter(node -> node.nodeNo() > currentNodeNo)
+                    .findFirst()
+                    .orElse(null);
         } catch (Exception exception) {
             throw new WorkflowTaskInvalidException();
+        }
+    }
+
+    private String serialize(WorkflowNodeSnapshot node) {
+        try {
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to create workflow task snapshot", exception);
         }
     }
 }
