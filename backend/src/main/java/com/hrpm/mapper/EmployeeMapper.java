@@ -66,6 +66,9 @@ public interface EmployeeMapper {
     @Select("SELECT id FROM hr_employee WHERE manager_employee_id=#{employeeId} AND deleted=0")
     List<Long> findDirectReportIds(@Param("employeeId") long employeeId);
 
+    @Select("SELECT id FROM hr_employee WHERE deleted = 0 AND employment_status <> 'TERMINATED'")
+    List<Long> listActiveIds();
+
     @Select("SELECT COUNT(*) FROM hr_employee WHERE employee_no=#{employeeNo} AND deleted=0")
     int countByEmployeeNo(@Param("employeeNo") String employeeNo);
 
