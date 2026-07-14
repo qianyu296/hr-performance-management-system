@@ -62,7 +62,7 @@ class DepartmentApiIntegrationTests {
                         .header("Idempotency-Key", "create-root-Department-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"code":"HQ","name":"Headquarters","status":"ACTIVE","effectiveDate":"2026-01-01"}
+                                {"code":"HQ","name":"总部","status":"ACTIVE","effectiveDate":"2026-01-01"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -75,7 +75,7 @@ class DepartmentApiIntegrationTests {
                         .header("Idempotency-Key", "create-child-Department-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"code":"ENG","name":"Engineering","parentId":"%s","status":"ACTIVE","effectiveDate":"2026-01-01"}
+                                {"code":"ENG","name":"研发部","parentId":"%s","status":"ACTIVE","effectiveDate":"2026-01-01"}
                                 """.formatted(root.path("id").asText())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.path", startsWith(root.path("path").asText())));
@@ -85,7 +85,7 @@ class DepartmentApiIntegrationTests {
     void unauthenticatedCallerCannotCreateDepartment() throws Exception {
         mockMvc.perform(post("/departments")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"HQ\",\"name\":\"Headquarters\",\"status\":\"ACTIVE\",\"effectiveDate\":\"2026-01-01\"}"))
+                        .content("{\"code\":\"HQ\",\"name\":\"总部\",\"status\":\"ACTIVE\",\"effectiveDate\":\"2026-01-01\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -95,7 +95,7 @@ class DepartmentApiIntegrationTests {
                         .header("Authorization", bearerToken())
                         .header("Idempotency-Key", "unprivileged-Department-0001")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"HQ\",\"name\":\"Headquarters\",\"status\":\"ACTIVE\",\"effectiveDate\":\"2026-01-01\"}"))
+                        .content("{\"code\":\"HQ\",\"name\":\"总部\",\"status\":\"ACTIVE\",\"effectiveDate\":\"2026-01-01\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -104,11 +104,11 @@ class DepartmentApiIntegrationTests {
         grantOrganizationReadPermission();
         jdbcTemplate.update("""
                 INSERT INTO hr_department (id, code, name, path, effective_date, status, sort_no)
-                VALUES (?, 'HQ', 'Headquarters', '/91001/', '2026-01-01', 'ACTIVE', 1)
+                VALUES (?, 'HQ', '总部', '/91001/', '2026-01-01', 'ACTIVE', 1)
                 """, 91001L);
         jdbcTemplate.update("""
                 INSERT INTO hr_department (id, code, name, parent_id, path, effective_date, status, sort_no)
-                VALUES (?, 'ENG', 'Engineering', ?, '/91001/91002/', '2026-01-01', 'ACTIVE', 1)
+                VALUES (?, 'ENG', '研发部', ?, '/91001/91002/', '2026-01-01', 'ACTIVE', 1)
                 """, 91002L, 91001L);
 
         mockMvc.perform(get("/departments")
@@ -130,15 +130,15 @@ class DepartmentApiIntegrationTests {
     }
 
     private void grantOrganizationManagementPermission() {
-        grantPermission("org:manage", "Organization management");
+        grantPermission("org:manage", "组织管理");
     }
 
     private void grantOrganizationReadPermission() {
-        grantPermission("org:read", "Organization read");
+        grantPermission("org:read", "组织查看");
     }
 
     private void grantPermission(String permissionCode, String permissionName) {
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, ?, ?, 'ACTIVE')", 90002L, "TEST_ORG_MANAGER", "Test Org Manager");
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, ?, ?, 'ACTIVE')", 90002L, "TEST_ORG_MANAGER", "组织管理员测试");
         jdbcTemplate.update("""
                 INSERT INTO sys_menu (id, name, permission_code, menu_type, status)
                 VALUES (?, ?, ?, 'BUTTON', 'ACTIVE')

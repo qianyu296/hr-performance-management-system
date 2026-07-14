@@ -48,15 +48,15 @@ class OvertimeRequestApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", EMPLOYEE_ID);
         jdbcTemplate.update("DELETE FROM hr_position WHERE id = ?", POSITION_ID);
         jdbcTemplate.update("DELETE FROM hr_department WHERE id = ?", DEPARTMENT_ID);
-        jdbcTemplate.update("INSERT INTO hr_department (id, code, name, path, effective_date, status) VALUES (?, 'OT_TEST', 'Overtime Test', ?, ?, 'ACTIVE')", DEPARTMENT_ID, "/96003/", LocalDate.of(2026, 1, 1));
-        jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status) VALUES (?, 'OT_POSITION', 'Overtime Position', 'ACTIVE')", POSITION_ID);
-        jdbcTemplate.update("INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date) VALUES (?, 'E-OT-001', 'Overtime Employee', ?, ?, 'FORMAL', ?)", EMPLOYEE_ID, DEPARTMENT_ID, POSITION_ID, LocalDate.of(2025, 1, 1));
+        jdbcTemplate.update("INSERT INTO hr_department (id, code, name, path, effective_date, status) VALUES (?, 'OT_TEST', '加班测试部门', ?, ?, 'ACTIVE')", DEPARTMENT_ID, "/96003/", LocalDate.of(2026, 1, 1));
+        jdbcTemplate.update("INSERT INTO hr_position (id, code, name, status) VALUES (?, 'OT_POSITION', '加班测试岗位', 'ACTIVE')", POSITION_ID);
+        jdbcTemplate.update("INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date) VALUES (?, 'E-OT-001', '加班测试员工', ?, ?, 'FORMAL', ?)", EMPLOYEE_ID, DEPARTMENT_ID, POSITION_ID, LocalDate.of(2025, 1, 1));
         jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version) VALUES (?, 'overtime-employee', ?, ?, 'ACTIVE', 1)", USER_ID, new BCryptPasswordEncoder().encode("correct-password"), EMPLOYEE_ID);
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'OT_SUBMIT', 'Overtime submit', 'ACTIVE')", 96005L);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'OT_SUBMIT', '加班申请', 'ACTIVE')", 96005L);
         jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, ?)", 96007L, USER_ID, 96005L);
         long attendanceSubmitMenuId = jdbcTemplate.queryForObject("SELECT id FROM sys_menu WHERE permission_code = 'attendance:submit' AND deleted = 0", Long.class);
         jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 96008L, 96005L, attendanceSubmitMenuId);
-        jdbcTemplate.update("INSERT INTO wf_template (id, code, name, business_type, priority, template_version, status) VALUES (?, 'TEST_OVERTIME', 'Test overtime workflow', 'OVERTIME', 10, 1, 'ACTIVE')", 96010L);
+        jdbcTemplate.update("INSERT INTO wf_template (id, code, name, business_type, priority, template_version, status) VALUES (?, 'TEST_OVERTIME', '测试加班流程', 'OVERTIME', 10, 1, 'ACTIVE')", 96010L);
         jdbcTemplate.update("INSERT INTO wf_template_scope (id, template_id, department_id) VALUES (?, ?, ?)", 96011L, 96010L, DEPARTMENT_ID);
         jdbcTemplate.update("INSERT INTO wf_template_node (id, template_id, node_no, node_type, approver_rule) VALUES (?, ?, 1, 'SPECIFIC_USER', JSON_OBJECT('userId', ?))", 96012L, 96010L, USER_ID);
     }

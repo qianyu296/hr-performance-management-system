@@ -43,9 +43,9 @@ class SystemAccessApiIntegrationTests {
 
         jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version, version) VALUES (?, 'system-access-admin', 'unused', 'ACTIVE', 0, 0)", ADMIN_USER_ID);
         jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version, version) VALUES (?, 'system-access-target', 'unused', 'ACTIVE', 0, 0)", TARGET_USER_ID);
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_ADMIN', 'System access admin', 'ACTIVE', 0)", ADMIN_ROLE_ID);
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_INITIAL', 'Initial role', 'ACTIVE', 0)", INITIAL_ROLE_ID);
-        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_REPLACEMENT', 'Replacement role', 'ACTIVE', 0)", REPLACEMENT_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_ADMIN', '权限管理测试管理员', 'ACTIVE', 0)", ADMIN_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_INITIAL', '初始测试角色', 'ACTIVE', 0)", INITIAL_ROLE_ID);
+        jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status, version) VALUES (?, 'SYSTEM_ACCESS_REPLACEMENT', '替换测试角色', 'ACTIVE', 0)", REPLACEMENT_ROLE_ID);
         systemManageMenuId = jdbcTemplate.queryForObject(
                 "SELECT id FROM sys_menu WHERE permission_code = 'system:manage' AND deleted = 0", Long.class);
         jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES (?, ?, ?)", 87031L, ADMIN_ROLE_ID, systemManageMenuId);
