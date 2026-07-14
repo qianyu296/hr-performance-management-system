@@ -4,6 +4,7 @@ package com.hrpm.security;
 import com.hrpm.common.ApiResponse;
 import com.hrpm.common.exception.TokenValidationException;
 import com.hrpm.service.TokenService;
+import com.hrpm.mapper.UserAccountMapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -23,16 +24,18 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     private final SessionValidator sessionValidator;
     private final PermissionResolver permissionResolver;
     private final ObjectMapper objectMapper;
+    private final UserAccountMapper userAccountMapper;
 
     public TokenAuthenticationFilter(
             TokenService tokenService,
             SessionValidator sessionValidator,
             PermissionResolver permissionResolver,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper, UserAccountMapper userAccountMapper) {
         this.tokenService = tokenService;
         this.sessionValidator = sessionValidator;
         this.permissionResolver = permissionResolver;
         this.objectMapper = objectMapper;
+        this.userAccountMapper = userAccountMapper;
     }
 
     @Override
@@ -47,6 +50,14 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             AuthenticatedUser user = tokenService.verify(authorization.substring("Bearer ".length()));
             if (!sessionValidator.isValid(user)) {
                 throw new TokenValidationException("Session token is invalid or expired");
+            }
+            var account = userAccountMapper == null ? null : userAccountMapper.findById(user.userId());
+            if (userAccountMapper != null && (account == null || (account.passwordChangeRequired() && !allowsPasswordChange(request)))) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                objectMapper.writeValue(response.getOutputStream(), new ApiResponse<>(
+                        "PASSWORD_CHANGE_REQUIRED", "Password must be changed before using the system", null, null));
+                return;
             }
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
@@ -64,5 +75,10 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             objectMapper.writeValue(response.getOutputStream(), new ApiResponse<>(
                     "AUTH_SESSION_INVALID", "Session token is invalid or expired", null, null));
         }
+    }
+
+    private boolean allowsPasswordChange(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri.endsWith("/auth/change-password") || uri.endsWith("/auth/logout");
     }
 }

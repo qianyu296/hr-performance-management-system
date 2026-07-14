@@ -7,9 +7,12 @@ import com.hrpm.dto.UpdateEmployeeDTO;
 import com.hrpm.entity.*;
 import com.hrpm.mapper.*;
 import com.hrpm.vo.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.security.SecureRandom;
+import java.util.Locale;
 
 @Service
 public class EmployeeService {
@@ -18,16 +21,21 @@ public class EmployeeService {
     private final PositionMapper positionMapper;
     private final RankMapper rankMapper;
     private final EmployeeDataScopeResolver dataScopeResolver;
+    private final UserAccountMapper userAccountMapper;
+    private final PasswordEncoder passwordEncoder;
     private final IdGenerator idGenerator;
 
     public EmployeeService(EmployeeMapper employeeMapper, DepartmentMapper departmentMapper,
-                           PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator, EmployeeDataScopeResolver dataScopeResolver) {
+                           PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator, EmployeeDataScopeResolver dataScopeResolver,
+                           UserAccountMapper userAccountMapper, PasswordEncoder passwordEncoder) {
         this.employeeMapper = employeeMapper;
         this.departmentMapper = departmentMapper;
         this.positionMapper = positionMapper;
         this.rankMapper = rankMapper;
         this.idGenerator = idGenerator;
         this.dataScopeResolver = dataScopeResolver;
+        this.userAccountMapper = userAccountMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public PageVO<EmployeeListVO> list(long userId, int page, int pageSize, String keyword, Long departmentId,
@@ -60,15 +68,21 @@ public class EmployeeService {
     }
 
     @Transactional
-    public Employee create(CreateEmployeeDTO request) {
+    public CreatedEmployeeVO create(CreateEmployeeDTO request) {
         if (employeeMapper.countByEmployeeNo(request.employeeNo()) > 0) throw new DuplicateResourceException("Employee number already exists");
+        String username = request.employeeNo().trim().toLowerCase(Locale.ROOT);
+        if (userAccountMapper.findByUsername(username) != null) throw new DuplicateResourceException("Employee account username already exists");
         long id = idGenerator.nextId();
         References refs = validateReferences(id, request.departmentId(), request.positionId(), request.rankId(), request.managerEmployeeId());
         Employee employee = new Employee(id, request.employeeNo(), request.name(), request.gender(), refs.departmentId(), null,
                 refs.positionId(), null, refs.rankId(), null, refs.managerId(), null, request.employmentStatus(), request.hireDate(),
                 request.probationStartDate(), request.probationEndDate(), 0);
         employeeMapper.insert(employee);
-        return get(id);
+        String initialPassword = temporaryPassword();
+        long userId = idGenerator.nextId();
+        userAccountMapper.insertEmployeeAccount(userId, username, passwordEncoder.encode(initialPassword), id);
+        if (userAccountMapper.assignEmployeeSelfServiceRole(idGenerator.nextId(), userId) != 1) throw new IllegalStateException("Employee self-service role is unavailable");
+        return new CreatedEmployeeVO(EmployeeVO.from(get(id)), username, initialPassword);
     }
 
     @Transactional
@@ -104,5 +118,11 @@ public class EmployeeService {
     }
 
     private Long parseNullable(String value) { return value == null || value.isBlank() ? null : Long.parseLong(value); }
+    private String temporaryPassword() {
+        final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        SecureRandom random = new SecureRandom(); StringBuilder value = new StringBuilder("Hrpm!");
+        for (int index = 0; index < 12; index++) value.append(alphabet.charAt(random.nextInt(alphabet.length())));
+        return value.toString();
+    }
     private record References(long departmentId, long positionId, Long rankId, Long managerId) {}
 }

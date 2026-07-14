@@ -25,7 +25,8 @@ async function submit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   try {
-    await authStore.signIn(form)
+    const result = await authStore.signIn(form)
+    if (result.passwordChangeRequired) { await router.replace('/change-password'); return }
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
     await router.replace(redirect)
   } catch {

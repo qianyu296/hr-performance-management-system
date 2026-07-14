@@ -2,6 +2,8 @@ package com.hrpm.security;
 
 
 import com.hrpm.service.TokenService;
+import com.hrpm.entity.UserAccount;
+import com.hrpm.mapper.UserAccountMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -18,13 +20,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.mockito.Mockito;
 
 class TokenAuthenticationFilterTests {
     private final TokenService tokenService = new TokenService(
             "test-signing-key-at-least-32-characters",
             Duration.ofMinutes(15),
             Clock.fixed(Instant.parse("2026-07-11T12:00:00Z"), ZoneOffset.UTC));
-    private final TokenAuthenticationFilter filter = new TokenAuthenticationFilter(tokenService, user -> true, userId -> List.of(), new ObjectMapper());
+    private final TokenAuthenticationFilter filter = new TokenAuthenticationFilter(tokenService, user -> true, userId -> List.of(), new ObjectMapper(), activeAccounts());
 
     @AfterEach
     void clearSecurityContext() {
@@ -67,7 +70,7 @@ class TokenAuthenticationFilterTests {
 
     @Test
     void disabledOrSessionInvalidatedUserCannotUsePreviouslySignedToken() throws Exception {
-        TokenAuthenticationFilter invalidatingFilter = new TokenAuthenticationFilter(tokenService, user -> false, userId -> List.of(), new ObjectMapper());
+        TokenAuthenticationFilter invalidatingFilter = new TokenAuthenticationFilter(tokenService, user -> false, userId -> List.of(), new ObjectMapper(), activeAccounts());
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
         request.addHeader("Authorization", "Bearer " + tokenService.issue(42L, "alice", 3));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -78,5 +81,11 @@ class TokenAuthenticationFilterTests {
 
         assertEquals(401, response.getStatus());
         assertEquals("AUTH_SESSION_INVALID", new ObjectMapper().readTree(response.getContentAsString()).get("code").asText());
+    }
+
+    private UserAccountMapper activeAccounts() {
+        UserAccountMapper mapper = Mockito.mock(UserAccountMapper.class);
+        Mockito.when(mapper.findById(42L)).thenReturn(new UserAccount(42L, "alice", "hash", null, "ACTIVE", 3, false));
+        return mapper;
     }
 }

@@ -12,6 +12,10 @@ import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
 import OrganizationEmployeesView from '@/views/OrganizationEmployeesView.vue'
 import SystemAccessView from '@/views/SystemAccessView.vue'
+import PerformanceConfigurationView from '@/views/PerformanceConfigurationView.vue'
+import PerformanceTasksView from '@/views/PerformanceTasksView.vue'
+import ReportsOverviewView from '@/views/ReportsOverviewView.vue'
+import ChangePasswordView from '@/views/ChangePasswordView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { navigationItems } from './navigation'
 
@@ -27,6 +31,9 @@ const routedComponents: Record<string, unknown> = {
   '/workflow/tasks': WorkflowTasksView,
   '/workflow/templates': WorkflowTemplatesView,
   '/system/users': SystemAccessView,
+  '/performance/cycles': PerformanceConfigurationView,
+  '/performance/tasks': PerformanceTasksView,
+  '/reports/overview': ReportsOverviewView,
 }
 
 const router = createRouter({
@@ -34,6 +41,7 @@ const router = createRouter({
   routes: [
     { path: '/', redirect: '/dashboard' },
     { path: '/login', name: 'login', component: LoginView, meta: { layout: 'blank', public: true, title: '登录' } },
+    { path: '/change-password', name: 'change-password', component: ChangePasswordView, meta: { title: '修改初始密码' } },
     {
       path: '/dashboard',
       name: 'dashboard',
@@ -59,6 +67,8 @@ router.beforeEach(async (to) => {
     return true
   }
   if (!authStore.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
+  if (authStore.passwordChangeRequired && to.path !== '/change-password') return '/change-password'
+  if (to.path === '/change-password') return true
   try {
     await authStore.loadCurrentUser()
     if (!authStore.can(typeof to.meta.permission === 'string' ? to.meta.permission : undefined)) return '/dashboard'

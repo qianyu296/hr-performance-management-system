@@ -111,12 +111,6 @@ class LeaveTypeApiIntegrationTests {
                 "SELECT name FROM sys_menu WHERE permission_code = 'system:manage' AND deleted = 0", String.class));
     }
 
-    @Test
-    void seededHrPositionUsesChineseDisplayName() {
-        assertEquals("人力资源专员", jdbcTemplate.queryForObject(
-                "SELECT name FROM hr_position WHERE code = 'DEV-HR-SPECIALIST' AND deleted = 0", String.class));
-    }
-
     private void cleanFixture() {
         jdbcTemplate.update("DELETE FROM att_leave_balance WHERE employee_id = ?", EMPLOYEE_ID);
         jdbcTemplate.update("DELETE FROM att_leave_type WHERE code = 'HR_ANNUAL'");

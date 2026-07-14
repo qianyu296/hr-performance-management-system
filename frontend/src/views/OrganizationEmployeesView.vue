@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Setting } from '@element-plus/icons-vue'
 import PageFrame from '@/components/common/PageFrame.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -51,7 +51,10 @@ async function saveEmployee(payload: CreateEmployeePayload | UpdateEmployeePaylo
   saving.value = true
   try {
     if (currentEmployee.value) await updateEmployee(currentEmployee.value.id, payload as UpdateEmployeePayload)
-    else await createEmployee(payload as CreateEmployeePayload)
+    else {
+      const created = await createEmployee(payload as CreateEmployeePayload)
+      await ElMessageBox.alert(`账号：${created.initialUsername}<br>临时密码：${created.initialPassword}<br><br>请仅通过安全渠道交付员工；首次登录后必须修改密码。`, '员工账号已开通', { dangerouslyUseHTMLString: true, confirmButtonText: '已记录' })
+    }
     ElMessage.success('员工档案已保存'); drawerOpen.value = false; await loadEmployees()
   } catch (error: any) {
     if (error?.response?.data?.code === 'VERSION_CONFLICT') ElMessage.warning('档案已被其他人更新，请关闭后重新打开')

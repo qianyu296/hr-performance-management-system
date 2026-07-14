@@ -1,47 +1,49 @@
-# Repository Guidelines
+# 仓库指南
 
-## Project Structure & Module Organization
+## 项目结构与模块
 
-This repository is split into two applications:
+本仓库由两个应用组成：
 
-- `backend/`: Spring Boot 3.4 API using Java 17, Spring Security, MyBatis, and Flyway. Production code is under `src/main/java/com/hrpm`, configuration and migrations are in `src/main/resources`, and tests are in `src/test/java`.
-- `frontend/`: Vue 3 and TypeScript application built with Vite. Views live in `src/views`, routing in `src/router`, API clients in `src/api`, and shared styling in `src/styles.css`.
-- `docs/`: requirements, architecture, database, API, testing, and delivery documentation. Keep `docs/hrpm-v1.openapi.yaml` synchronized with API changes.
-- `docker-compose.yml`: local MySQL, Redis, and MinIO services.
+- `backend/`：Java 17、Spring Boot 3.4 API，使用 Spring Security、MyBatis 与 Flyway。生产代码位于 `src/main/java/com/hrpm`，配置和迁移脚本位于 `src/main/resources`，测试位于 `src/test/java`。
+- `frontend/`：Vue 3、TypeScript 与 Vite。页面在 `src/views`，路由在 `src/router`，接口客户端在 `src/api`，全局样式在 `src/styles.css`。
+- `docs/`：需求、架构、数据库、接口与测试文档；接口契约由 Springdoc 自动生成；启动后通过 `/api/v1/v3/api-docs.yaml` 查看。
+- 根目录 `docker-compose.yml`：本地 MySQL、Redis 和 MinIO 基础服务。
 
-## Build, Test, and Development Commands
+## 构建、测试与本地运行
 
-Run infrastructure from the repository root:
+在仓库根目录启动基础服务：
 
 ```powershell
 docker compose up -d
 ```
 
-Backend commands run from `backend/`:
+在 `backend/` 执行：
 
 ```powershell
-mvn spring-boot:run  # Start the API on port 8080
-mvn test             # Run JUnit tests
-mvn clean package    # Build and test the executable JAR
+mvn spring-boot:run  # 启动 API（8080）
+mvn test             # 运行 JUnit 5 与集成测试
+mvn clean package    # 测试并构建可执行 JAR
 ```
 
-Frontend commands run from `frontend/`:
+在 `frontend/` 执行：
 
 ```powershell
-npm ci               # Install locked dependencies
-npm run dev          # Start Vite on port 5173
-npm run typecheck    # Validate Vue and TypeScript types
-npm run build        # Type-check and create the production bundle
+npm ci               # 按锁定版本安装依赖
+npm run dev          # 启动 Vite（5173）
+npm run typecheck    # 校验 Vue/TypeScript 类型
+npm run build        # 类型校验并生成生产包
 ```
 
-## Coding Style & Naming Conventions
+## 编码风格与命名
 
-Use 2-space indentation in XML, YAML, JSON, Vue, and TypeScript; use 4 spaces in Java. Follow standard Java naming: `PascalCase` classes, `camelCase` members, and lowercase packages under `com.hrpm`. Vue components and views use `PascalCase` filenames such as `DashboardView.vue`. Prefer the `@/` alias for frontend imports. No formatter or linter is configured, so match nearby code and keep changes focused.
+XML、YAML、JSON、Vue 和 TypeScript 使用 2 空格缩进；Java 使用 4 空格。Java 包名使用小写 `com.hrpm`，类名使用 `PascalCase`，成员使用 `camelCase`。Vue 组件和页面使用 `PascalCase` 文件名，例如 `DashboardView.vue`；前端导入优先使用 `@/` 别名。项目未配置格式化或 lint 工具，应遵循相邻代码并保持修改聚焦。
 
-## Testing Guidelines
+## 测试与数据库
 
-Backend tests use JUnit 5 via `spring-boot-starter-test`; name test classes `*Tests.java` and mirror production package paths. Add focused tests for controllers, security rules, services, and database behavior. The frontend currently has no test runner, so `npm run typecheck` and `npm run build` are required checks for frontend changes. Add a test framework before introducing frontend unit tests rather than ad hoc scripts.
+后端采用 JUnit 5、Spring Boot Test 与 Testcontainers；测试类命名为 `*Tests.java`，并镜像生产包路径。为控制器、安全规则、服务和数据库行为补充针对性测试。前端暂无测试框架，前端改动至少执行 `npm run typecheck` 和 `npm run build`。
 
-## Database, Commits & Pull Requests
+数据库变更必须新增 Flyway 迁移，例如 `V017__add_example.sql`；不得修改已应用的迁移文件。
 
-Database changes must be additive Flyway migrations named `V###__description.sql`; never edit an applied migration. The current history uses Conventional Commit style (`chore: initialize ...`), so use concise prefixes such as `feat:`, `fix:`, `docs:`, or `test:`. Pull requests should describe scope, list verification commands, link relevant issues, note migrations or API changes, and include screenshots for visible UI changes.
+## 提交与拉取请求
+
+提交采用 Conventional Commits，例如 `feat: manage leave types`、`fix: correct balance calculation`、`docs: update api`。拉取请求应说明范围、关联 issue、列出验证命令，并注明迁移或 API 变化；可见 UI 变更附截图。

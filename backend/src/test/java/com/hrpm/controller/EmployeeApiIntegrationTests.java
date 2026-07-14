@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,9 +26,12 @@ class EmployeeApiIntegrationTests {
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired TokenService tokenService;
+    @Autowired ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (SELECT id FROM sys_user WHERE username LIKE 'emp_test_%')");
+        jdbcTemplate.update("DELETE FROM sys_user WHERE username LIKE 'emp_test_%'");
         jdbcTemplate.update("DELETE FROM hr_employee WHERE employee_no LIKE 'EMP_TEST_%'");
         jdbcTemplate.update("DELETE FROM hr_rank WHERE code='EMP_TEST_RANK'");
         jdbcTemplate.update("DELETE FROM hr_position WHERE code='EMP_TEST_POSITION'");
@@ -72,15 +76,36 @@ class EmployeeApiIntegrationTests {
     }
 
     @Test
-    void organizationManagerCanCreateEmployee() throws Exception {
-        mockMvc.perform(post("/employees").header("Authorization", token())
+    void organizationManagerCanCreateEmployeeAndProvisionSelfServiceAccount() throws Exception {
+        String response = mockMvc.perform(post("/employees").header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"employeeNo":"EMP_TEST_003","name":"Carol Wu","gender":"FEMALE","departmentId":"99101","positionId":"99102","rankId":"99103","employmentStatus":"PROBATION","hireDate":"2026-07-13"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.employeeNo").value("EMP_TEST_003"))
-                .andExpect(jsonPath("$.data.version").value("0"));
+                .andExpect(jsonPath("$.data.employee.employeeNo").value("EMP_TEST_003"))
+                .andExpect(jsonPath("$.data.initialUsername").value("emp_test_003"))
+                .andExpect(jsonPath("$.data.initialPassword").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+
+        String password = objectMapper.readTree(response).at("/data/initialPassword").asText();
+        String loginResponse = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"emp_test_003\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.passwordChangeRequired").value(true))
+                .andReturn().getResponse().getContentAsString();
+        String accessToken = objectMapper.readTree(loginResponse).at("/data/accessToken").asText();
+        mockMvc.perform(get("/me/permissions").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+        String changedResponse = mockMvc.perform(post("/auth/change-password").header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + password + "\",\"newPassword\":\"EmployeeNewPassword!2026\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.passwordChangeRequired").value(false))
+                .andReturn().getResponse().getContentAsString();
+        String changedToken = objectMapper.readTree(changedResponse).at("/data/accessToken").asText();
+        mockMvc.perform(get("/me/permissions").header("Authorization", "Bearer " + changedToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[?(@ == 'attendance:submit')]").isNotEmpty());
     }
 
     @Test

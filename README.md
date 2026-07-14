@@ -97,6 +97,6 @@ npm run build
 
 ## 文档
 
-- API contract: [docs/hrpm-v1.openapi.yaml](docs/hrpm-v1.openapi.yaml)
+- API contract: `/api/v1/v3/api-docs.yaml`（由 Springdoc 从运行中的 Controller 自动生成）
 - Requirements and design: [docs](docs)
 - Contributor guide: [AGENTS.md](AGENTS.md)

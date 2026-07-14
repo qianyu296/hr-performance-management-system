@@ -4,6 +4,7 @@ package com.hrpm.controller;
 import com.hrpm.common.ApiResponse;
 import com.hrpm.dto.LoginDTO;
 import com.hrpm.dto.RefreshTokenDTO;
+import com.hrpm.dto.ChangePasswordDTO;
 import com.hrpm.security.AuthenticatedUser;
 import com.hrpm.service.AuthenticationService;
 import com.hrpm.vo.LoginVO;
@@ -38,5 +39,10 @@ public class AuthenticationController {
     public ApiResponse<Void> logout(@AuthenticationPrincipal AuthenticatedUser user) {
         authenticationService.logout(user);
         return ApiResponse.success(null);
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<LoginVO> changePassword(@AuthenticationPrincipal AuthenticatedUser user, @Valid @RequestBody ChangePasswordDTO request) {
+        return ApiResponse.success(authenticationService.changePassword(user, request));
     }
 }

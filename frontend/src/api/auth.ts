@@ -16,6 +16,7 @@ export interface LoginResult {
   accessToken: string
   refreshToken: string
   tokenType: string
+  passwordChangeRequired: boolean
 }
 
 export interface CurrentUser {
@@ -45,4 +46,9 @@ export async function refreshSession(refreshToken: string) {
 
 export async function logout(accessToken: string) {
   await http.post('/auth/logout', undefined, { headers: { Authorization: `Bearer ${accessToken}` } })
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const response = await http.post<ApiResponse<LoginResult>>('/auth/change-password', { currentPassword, newPassword })
+  return response.data.data
 }

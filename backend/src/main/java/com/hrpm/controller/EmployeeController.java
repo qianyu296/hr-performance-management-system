@@ -36,7 +36,7 @@ public class EmployeeController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('org:manage')")
-    public ApiResponse<EmployeeVO> create(@Valid @RequestBody CreateEmployeeDTO request) { return ApiResponse.success(EmployeeVO.from(service.create(request))); }
+    public ApiResponse<CreatedEmployeeVO> create(@Valid @RequestBody CreateEmployeeDTO request) { return ApiResponse.success(service.create(request)); }
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasAuthority('org:manage')")

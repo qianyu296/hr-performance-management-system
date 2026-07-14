@@ -26,6 +26,7 @@ export interface EmployeeDetail extends EmployeeListItem {
   gender: string | null; departmentId: string; positionId: string; rankId: string | null
   managerEmployeeId: string | null; hireDate: string; probationStartDate: string | null; probationEndDate: string | null
 }
+export interface CreatedEmployeeAccount { employee: EmployeeDetail; initialUsername: string; initialPassword: string }
 
 export interface EmployeePage { records: EmployeeListItem[]; total: number; page: number; pageSize: number }
 export interface EmployeeQuery { page: number; pageSize: number; keyword?: string; departmentId?: string; positionId?: string; employmentStatus?: string }

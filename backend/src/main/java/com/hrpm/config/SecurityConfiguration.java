@@ -8,6 +8,7 @@ import com.hrpm.service.TokenService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -15,6 +16,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
@@ -30,6 +32,14 @@ import java.time.Duration;
 @EnableMethodSecurity
 public class SecurityConfiguration {
     @Bean
+    WebSecurityCustomizer openApiWebSecurityCustomizer() {
+        return web -> web.ignoring().requestMatchers(request -> {
+            String uri = request.getRequestURI();
+            return uri.contains("/v3/api-docs") || uri.contains("/swagger-ui");
+        });
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, TokenAuthenticationFilter tokenAuthenticationFilter) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
@@ -37,7 +47,9 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health", "/actuator/health", "/auth/login", "/auth/refresh").permitAll()
+                        .requestMatchers("/health", "/actuator/health", "/auth/login", "/auth/refresh",
+                                "/v3/api-docs/**", "/api/v1/v3/api-docs/**",
+                                "/swagger-ui/**", "/api/v1/swagger-ui/**", "/swagger-ui.html", "/api/v1/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
                 .build();
     }
@@ -55,8 +67,9 @@ public class SecurityConfiguration {
             TokenService tokenService,
             SessionValidator sessionValidator,
             PermissionResolver permissionResolver,
-            com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
-        return new TokenAuthenticationFilter(tokenService, sessionValidator, permissionResolver, objectMapper);
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            ObjectProvider<com.hrpm.mapper.UserAccountMapper> userAccountMapperProvider) {
+        return new TokenAuthenticationFilter(tokenService, sessionValidator, permissionResolver, objectMapper, userAccountMapperProvider.getIfAvailable());
     }
 
     @Bean
