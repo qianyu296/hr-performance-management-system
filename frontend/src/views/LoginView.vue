@@ -42,13 +42,13 @@ async function submit() {
         <span class="brand-mark">H</span>
         <div>
           <strong>HRPM</strong>
-          <span>人力绩效管理系统</span>
+          <span>人力资源管理系统</span>
         </div>
       </div>
 
       <div class="login-copy">
         <h1 id="login-title">登录工作台</h1>
-        <p>进入组织、人事、考勤、绩效与审批模块。</p>
+        <p>进入组织、人事、考勤与审批模块。</p>
       </div>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="login-form" @submit.prevent="submit">

@@ -1,9 +1,7 @@
 package com.hrpm.common.exception;
 
 
-import com.hrpm.entity.Department;
-
-public class DepartmentNotFoundException extends RuntimeException {
+public class DepartmentNotFoundException extends ResourceNotFoundException {
     public DepartmentNotFoundException() {
         super("Parent Department does not exist");
     }

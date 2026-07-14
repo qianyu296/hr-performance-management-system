@@ -7,7 +7,10 @@ public record Department(
         String code,
         String name,
         Long parentId,
+        Long leaderEmployeeId,
         String path,
+        int sortNo,
         LocalDate effectiveDate,
-        String status) {
+        String status,
+        int version) {
 }

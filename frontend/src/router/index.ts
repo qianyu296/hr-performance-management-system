@@ -12,8 +12,6 @@ import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
 import OrganizationEmployeesView from '@/views/OrganizationEmployeesView.vue'
 import SystemAccessView from '@/views/SystemAccessView.vue'
-import PerformanceConfigurationView from '@/views/PerformanceConfigurationView.vue'
-import PerformanceTasksView from '@/views/PerformanceTasksView.vue'
 import ReportsOverviewView from '@/views/ReportsOverviewView.vue'
 import ChangePasswordView from '@/views/ChangePasswordView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -31,8 +29,6 @@ const routedComponents: Record<string, unknown> = {
   '/workflow/tasks': WorkflowTasksView,
   '/workflow/templates': WorkflowTemplatesView,
   '/system/users': SystemAccessView,
-  '/performance/cycles': PerformanceConfigurationView,
-  '/performance/tasks': PerformanceTasksView,
   '/reports/overview': ReportsOverviewView,
 }
 

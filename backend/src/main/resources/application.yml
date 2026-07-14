@@ -3,8 +3,8 @@ spring:
     name: hrpm-backend
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/hrpm?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
-    username: ${DB_USERNAME:hrpm}
-    password: ${DB_PASSWORD:hrpm_dev_password}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
   flyway:
     enabled: true
     baseline-on-migrate: false

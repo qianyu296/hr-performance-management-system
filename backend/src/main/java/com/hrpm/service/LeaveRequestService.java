@@ -29,6 +29,7 @@ public class LeaveRequestService {
     private final IdGenerator idGenerator;
     private final LeaveWorkflowService leaveWorkflowService;
     private final WorkTimeService workTimeService;
+    private final LeaveBalanceProvisioningService leaveBalanceProvisioningService;
 
     public LeaveRequestService(
             UserAccountMapper userAccountMapper,
@@ -37,7 +38,8 @@ public class LeaveRequestService {
             LeaveRequestMapper leaveRequestMapper,
             IdGenerator idGenerator,
             LeaveWorkflowService leaveWorkflowService,
-            WorkTimeService workTimeService) {
+            WorkTimeService workTimeService,
+            LeaveBalanceProvisioningService leaveBalanceProvisioningService) {
         this.userAccountMapper = userAccountMapper;
         this.employeeAttendanceMapper = employeeAttendanceMapper;
         this.leaveTypeMapper = leaveTypeMapper;
@@ -45,6 +47,7 @@ public class LeaveRequestService {
         this.idGenerator = idGenerator;
         this.leaveWorkflowService = leaveWorkflowService;
         this.workTimeService = workTimeService;
+        this.leaveBalanceProvisioningService = leaveBalanceProvisioningService;
     }
 
     @Transactional
@@ -61,6 +64,8 @@ public class LeaveRequestService {
         if (leaveType == null || !"ACTIVE".equals(leaveType.status())) {
             throw new IllegalArgumentException("Leave type is unavailable");
         }
+        leaveBalanceProvisioningService.initializeForLeaveType(account.employeeId(), leaveType,
+                command.startTime().atZone(java.time.ZoneOffset.UTC).getYear());
         if (!command.endTime().isAfter(command.startTime())) {
             throw new IllegalArgumentException("Leave end time must be after start time");
         }

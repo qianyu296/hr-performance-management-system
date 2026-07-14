@@ -24,10 +24,12 @@ public class EmployeeService {
     private final UserAccountMapper userAccountMapper;
     private final PasswordEncoder passwordEncoder;
     private final IdGenerator idGenerator;
+    private final LeaveBalanceProvisioningService leaveBalanceProvisioningService;
 
     public EmployeeService(EmployeeMapper employeeMapper, DepartmentMapper departmentMapper,
                            PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator, EmployeeDataScopeResolver dataScopeResolver,
-                           UserAccountMapper userAccountMapper, PasswordEncoder passwordEncoder) {
+                           UserAccountMapper userAccountMapper, PasswordEncoder passwordEncoder,
+                           LeaveBalanceProvisioningService leaveBalanceProvisioningService) {
         this.employeeMapper = employeeMapper;
         this.departmentMapper = departmentMapper;
         this.positionMapper = positionMapper;
@@ -36,6 +38,7 @@ public class EmployeeService {
         this.dataScopeResolver = dataScopeResolver;
         this.userAccountMapper = userAccountMapper;
         this.passwordEncoder = passwordEncoder;
+        this.leaveBalanceProvisioningService = leaveBalanceProvisioningService;
     }
 
     public PageVO<EmployeeListVO> list(long userId, int page, int pageSize, String keyword, Long departmentId,
@@ -82,6 +85,7 @@ public class EmployeeService {
         long userId = idGenerator.nextId();
         userAccountMapper.insertEmployeeAccount(userId, username, passwordEncoder.encode(initialPassword), id);
         if (userAccountMapper.assignEmployeeSelfServiceRole(idGenerator.nextId(), userId) != 1) throw new IllegalStateException("Employee self-service role is unavailable");
+        leaveBalanceProvisioningService.initializeForEmployee(id, java.time.LocalDate.now().getYear());
         return new CreatedEmployeeVO(EmployeeVO.from(get(id)), username, initialPassword);
     }
 

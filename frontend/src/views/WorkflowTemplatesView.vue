@@ -30,12 +30,12 @@ const form = reactive({
 })
 
 const isEditing = computed(() => Boolean(form.id))
-const businessLabels: Record<BusinessType, string> = {
+const businessLabels: Record<Exclude<BusinessType, 'PERFORMANCE_APPEAL'>, string> = {
   LEAVE: '请假',
   OVERTIME: '加班',
   PERSONNEL_CHANGE: '人事异动',
-  PERFORMANCE_APPEAL: '绩效申诉',
 }
+const visibleTemplates = computed(() => templates.value.filter((template) => template.businessType !== 'PERFORMANCE_APPEAL'))
 const nodeLabels: Record<WorkflowNodeType, string> = {
   SPECIFIC_USER: '指定人员',
   DIRECT_MANAGER: '直属主管',
@@ -44,7 +44,7 @@ const nodeLabels: Record<WorkflowNodeType, string> = {
 }
 
 function businessLabel(value: string) {
-  return businessLabels[value as BusinessType] ?? value
+  return businessLabels[value as keyof typeof businessLabels] ?? value
 }
 
 function nodeLabel(value: string) {
@@ -160,7 +160,7 @@ onMounted(loadData)
       <el-button type="primary" :icon="Plus" @click="openCreate">新建模板</el-button>
     </template>
 
-    <el-table v-loading="loading" :data="templates" class="data-table">
+      <el-table v-loading="loading" :data="visibleTemplates" class="data-table">
       <el-table-column prop="code" label="编码" min-width="130" />
       <el-table-column prop="name" label="名称" min-width="190" />
       <el-table-column label="业务" width="120"><template #default="{ row }">{{ businessLabel(row.businessType) }}</template></el-table-column>
@@ -170,7 +170,7 @@ onMounted(loadData)
       <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'">{{ row.status === 'ACTIVE' ? '启用' : '停用' }}</el-tag></template></el-table-column>
       <el-table-column label="操作" width="76" fixed="right"><template #default="{ row }"><el-tooltip content="编辑模板"><el-button text :icon="Edit" aria-label="编辑模板" @click="openEdit(row)" /></el-tooltip></template></el-table-column>
     </el-table>
-    <EmptyState v-if="!loading && templates.length === 0" title="暂无流程模板" description="创建模板后，请假和后续业务将按范围、优先级和版本选择审批链。" />
+    <EmptyState v-if="!loading && visibleTemplates.length === 0" title="暂无流程模板" description="创建模板后，请假和后续业务将按范围、优先级和版本选择审批链。" />
 
     <el-dialog v-model="dialogVisible" :title="isEditing ? '编辑流程模板' : '新建流程模板'" width="min(840px, 94vw)" destroy-on-close>
       <el-form label-position="top" class="workflow-template-form">

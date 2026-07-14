@@ -5,6 +5,7 @@ import com.hrpm.common.exception.AuthenticationFailedException;
 import com.hrpm.common.exception.WorkflowTaskInvalidException;
 import com.hrpm.common.exception.WorkflowTemplateMissingException;
 import com.hrpm.common.exception.DuplicateResourceException;
+import com.hrpm.common.exception.DataScopeDeniedException;
 import com.hrpm.common.exception.VersionConflictException;
 import com.hrpm.common.exception.OrganizationReferenceInvalidException;
 import com.hrpm.common.exception.ResourceNotFoundException;
@@ -45,6 +46,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDuplicateResource(DuplicateResourceException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse<>("IDEMPOTENCY_CONFLICT", exception.getMessage(), null, TraceIdContext.current()));
+    }
+
+    @ExceptionHandler(DataScopeDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataScopeDenied(DataScopeDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>("DATA_SCOPE_DENIED", exception.getMessage(), null, TraceIdContext.current()));
     }
 
     @ExceptionHandler(WorkflowTaskInvalidException.class)

@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Calendar, DataAnalysis, DocumentChecked, Grid, Histogram, OfficeBuilding, Operation, Setting, UserFilled } from '@element-plus/icons-vue'
+import { Calendar, DocumentChecked, Grid, Histogram, OfficeBuilding, Operation, Setting, UserFilled } from '@element-plus/icons-vue'
 
 export interface NavigationItem {
   path: string
@@ -21,12 +21,9 @@ export const navigationItems: NavigationItem[] = [
   { path: '/attendance/calendar', title: '工作日历', description: '节假日、调休和工作时长配置', group: '假勤管理', icon: Calendar, permission: 'attendance:manage' },
   { path: '/attendance/balances', title: '假期余额', description: '个人余额、调整流水和统计口径', group: '假勤管理', icon: Histogram, permission: 'attendance:read' },
   { path: '/attendance/summary', title: '月度假勤汇总', description: '按员工汇总请假、加班、调休和待审批', group: '假勤管理', icon: Histogram, permission: 'attendance:manage' },
-  { path: '/goals/cycles', title: '目标管理', description: '目标周期、目标树和进度记录', group: '目标绩效', icon: DocumentChecked, permission: 'goal:read' },
-  { path: '/performance/cycles', title: '绩效周期', description: '绩效周期、方案和任务进度', group: '目标绩效', icon: DataAnalysis, permission: 'performance:config' },
-  { path: '/performance/tasks', title: '绩效任务', description: '员工自评、主管评分和结果查看', group: '目标绩效', icon: DataAnalysis },
   { path: '/workflow/tasks', title: '审批中心', description: '待办任务、审批历史和流程处理', group: '审批协同', icon: DocumentChecked, permission: 'workflow:approve' },
   { path: '/workflow/templates', title: '流程模板', description: '审批节点、范围和优先级配置', group: '审批协同', icon: Operation, permission: 'workflow:manage' },
-  { path: '/reports/overview', title: '数据分析', description: '人力、假勤和绩效指标分析', group: '数据分析', icon: Histogram, permission: 'report:read' },
+  { path: '/reports/overview', title: '数据分析', description: '人员规模和假勤指标分析', group: '数据分析', icon: Histogram, permission: 'report:read' },
   { path: '/system/users', title: '系统管理', description: '用户、角色、菜单和审计配置', group: '系统管理', icon: Setting, permission: 'system:manage' },
 ]
 

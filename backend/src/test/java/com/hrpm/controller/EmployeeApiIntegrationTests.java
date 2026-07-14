@@ -77,6 +77,11 @@ class EmployeeApiIntegrationTests {
 
     @Test
     void organizationManagerCanCreateEmployeeAndProvisionSelfServiceAccount() throws Exception {
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, annual_quota, status)
+                VALUES (99104, 'EMP_TEST_ANNUAL', '员工测试年假', 1, 1.00, 80.00, 'ACTIVE')
+                ON DUPLICATE KEY UPDATE annual_quota = VALUES(annual_quota), status = 'ACTIVE', deleted = 0
+                """);
         String response = mockMvc.perform(post("/employees").header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -87,6 +92,13 @@ class EmployeeApiIntegrationTests {
                 .andExpect(jsonPath("$.data.initialUsername").value("emp_test_003"))
                 .andExpect(jsonPath("$.data.initialPassword").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM att_leave_balance b
+                JOIN hr_employee e ON e.id = b.employee_id
+                WHERE e.employee_no = 'EMP_TEST_003' AND b.balance_type = 'EMP_TEST_ANNUAL'
+                  AND b.balance_year = ? AND b.available_hours = 80.00 AND b.deleted = 0
+                """, Integer.class, java.time.LocalDate.now().getYear()));
 
         String password = objectMapper.readTree(response).at("/data/initialPassword").asText();
         String loginResponse = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)

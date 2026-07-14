@@ -108,6 +108,26 @@ class LeaveRequestApiIntegrationTests {
     }
 
     @Test
+    void firstBalanceDeductingLeaveDraftInitializesAnnualBalance() throws Exception {
+        grantLeaveSubmitPermission();
+        jdbcTemplate.update("UPDATE att_leave_type SET annual_quota = 80.00 WHERE id = ?", 92001L);
+
+        mockMvc.perform(post("/leave-requests")
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-draft-initialize-balance-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"leaveTypeId":"92001","startTime":"2026-07-13T09:00:00Z","endTime":"2026-07-13T17:00:00Z","reason":"首次年假"}
+                                """))
+                .andExpect(status().isOk());
+
+        org.junit.jupiter.api.Assertions.assertEquals("80.00", jdbcTemplate.queryForObject("""
+                SELECT available_hours FROM att_leave_balance
+                WHERE employee_id = ? AND balance_type = 'ANNUAL' AND balance_year = 2026 AND deleted = 0
+                """, String.class, 91001L));
+    }
+
+    @Test
     void employeeWithoutAttendanceSubmitPermissionCannotCreateLeaveDraft() throws Exception {
         mockMvc.perform(post("/leave-requests")
                         .header("Authorization", bearerToken())
@@ -193,6 +213,38 @@ class LeaveRequestApiIntegrationTests {
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_instance", Integer.class));
         org.junit.jupiter.api.Assertions.assertEquals(1,
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wf_task WHERE status = 'PENDING'", Integer.class));
+    }
+
+    @Test
+    void overlappingDraftDoesNotBlockSubmittingAnotherDraft() throws Exception {
+        grantLeaveSubmitPermission();
+        seedLeaveWorkflowTemplate();
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
+                VALUES (?, ?, 'ANNUAL', 2026, 16.00)
+                """, 93001L, 91001L);
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_request (
+                    id, request_no, employee_id, leave_type_id, start_time, end_time,
+                    duration_hours, reason, status, organization_snapshot)
+                VALUES (?, 'LR94015', ?, ?, ?, ?, 8.00, '草稿请假', 'DRAFT', '{}')
+                """, 94015L, 91001L, 92001L,
+                Instant.parse("2026-07-16T09:00:00Z"), Instant.parse("2026-07-16T17:00:00Z"));
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_request (
+                    id, request_no, employee_id, leave_type_id, start_time, end_time,
+                    duration_hours, reason, status, organization_snapshot)
+                VALUES (?, 'LR94016', ?, ?, ?, ?, 8.00, '待提交请假', 'DRAFT', '{}')
+                """, 94016L, 91001L, 92001L,
+                Instant.parse("2026-07-16T09:00:00Z"), Instant.parse("2026-07-16T17:00:00Z"));
+
+        mockMvc.perform(post("/leave-requests/{id}/submit", 94016L)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-submit-overlapping-draft-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
     }
 
     @Test

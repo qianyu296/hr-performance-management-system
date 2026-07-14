@@ -98,7 +98,7 @@ onMounted(async () => { await loadReferenceData(); await loadEmployees() })
           <el-table-column prop="positionName" label="岗位" min-width="150" />
           <el-table-column prop="rankName" label="职级" width="100" />
           <el-table-column label="状态" width="100"><template #default="scope"><el-tag size="small" :type="scope.row.employmentStatus === 'FORMAL' ? 'success' : 'warning'">{{ scope.row.employmentStatus === 'FORMAL' ? '正式' : '试用' }}</el-tag></template></el-table-column>
-          <el-table-column label="操作" width="90" fixed="right"><template #default="scope"><el-button link type="primary" @click="openEdit(scope.row.id)">查看/编辑</el-button></template></el-table-column>
+          <el-table-column label="操作" width="132" fixed="right"><template #default="scope"><el-button link type="primary" class="employee-record-action" @click="openEdit(scope.row.id)">查看/编辑</el-button></template></el-table-column>
         </el-table>
         <EmptyState v-if="!loading && employees.length === 0" title="暂无员工记录" description="调整筛选条件，或创建第一份员工档案。" />
         <div class="table-pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.pageSize" :total="total" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" @change="loadEmployees" /></div>
@@ -108,3 +108,10 @@ onMounted(async () => { await loadReferenceData(); await loadEmployees() })
     <PositionRankDialog v-model="masterDataOpen" :positions="positions" :ranks="ranks" :saving="saving" @save-position="savePosition" @save-rank="saveRank" />
   </PageFrame>
 </template>
+
+<style scoped>
+.employee-record-action {
+  min-width: 72px;
+  white-space: nowrap;
+}
+</style>

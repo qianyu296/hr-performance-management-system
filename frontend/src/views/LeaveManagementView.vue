@@ -45,6 +45,23 @@ function statusLabel(status: string) {
   return ({ DRAFT: '草稿', IN_PROGRESS: '审批中', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已撤销' } as Record<string, string>)[status] ?? status
 }
 
+function submitErrorMessage(error: any) {
+  const message = error?.response?.data?.message
+  if (message === 'Leave request overlaps an existing request') {
+    return '请假时间与已有审批中或已通过的请假申请重叠，请调整时间后重试'
+  }
+  if (message === 'Leave balance is insufficient') {
+    return '可用请假余额不足，请联系 HR 调整余额或缩短请假时长'
+  }
+  if (message === 'Workflow task is invalid') {
+    return '请假审批流程未能找到有效审批人，请联系 HR 检查流程节点配置'
+  }
+  if (message === 'No matching workflow template is available') {
+    return '未配置适用的请假审批流程，请联系 HR 配置流程模板'
+  }
+  return '请假提交失败，请稍后重试或联系 HR 确认请假规则与审批流程'
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -78,15 +95,21 @@ async function submitNewRequest() {
     ElMessage.success('请假申请已提交审批')
     dialogVisible.value = false
     await loadData()
+  } catch (error) {
+    ElMessage.error(submitErrorMessage(error))
   } finally {
     submitting.value = false
   }
 }
 
 async function submitDraft(row: LeaveRequestItem) {
-  await submitLeaveRequest(row.id, row.version)
-  ElMessage.success('草稿已提交审批')
-  await loadData()
+  try {
+    await submitLeaveRequest(row.id, row.version)
+    ElMessage.success('草稿已提交审批')
+    await loadData()
+  } catch (error) {
+    ElMessage.error(submitErrorMessage(error))
+  }
 }
 
 async function cancelApproved(row: LeaveRequestItem) {

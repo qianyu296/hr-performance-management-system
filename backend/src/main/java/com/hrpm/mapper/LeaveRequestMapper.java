@@ -53,7 +53,7 @@ public interface LeaveRequestMapper {
     @Select("""
             SELECT COUNT(*) FROM att_leave_request
             WHERE employee_id = #{employeeId} AND id <> #{requestId} AND deleted = 0
-              AND status IN ('DRAFT', 'IN_PROGRESS', 'APPROVED')
+              AND status IN ('IN_PROGRESS', 'APPROVED')
               AND start_time < #{endTime} AND end_time > #{startTime}
             """)
     int countOverlaps(@Param("employeeId") long employeeId, @Param("requestId") long requestId,
