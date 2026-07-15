@@ -13,11 +13,19 @@ import com.hrpm.common.exception.TokenValidationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentNotValidException.class})
+    public ResponseEntity<ApiResponse<Void>> handleRequestValidation(Exception exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>("VALIDATION_FAILED", "Invalid request", null, TraceIdContext.current()));
+    }
+
     @ExceptionHandler(OrganizationReferenceInvalidException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidOrganizationReference(OrganizationReferenceInvalidException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

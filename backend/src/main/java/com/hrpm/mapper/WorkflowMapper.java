@@ -249,6 +249,18 @@ public interface WorkflowMapper {
                 JOIN att_overtime_request r ON r.id = i.business_id AND r.deleted = 0
                 JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
                 WHERE t.assignee_user_id = #{userId} AND t.status = 'PENDING' AND t.deleted = 0
+                UNION ALL
+                SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
+                       c.change_no AS requestNo,
+                       COALESCE(e.name, JSON_UNQUOTE(JSON_EXTRACT(c.after_snapshot, '$.name'))) AS applicantName,
+                       c.change_type AS leaveTypeName,
+                       NULL AS startTime, NULL AS endTime, NULL AS durationHours,
+                       t.status, t.version, t.created_time AS createdTime
+                FROM wf_task t
+                JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'PERSONNEL_CHANGE'
+                JOIN hr_personnel_change c ON c.id = i.business_id AND c.deleted = 0
+                LEFT JOIN hr_employee e ON e.id = c.employee_id AND e.deleted = 0
+                WHERE t.assignee_user_id = #{userId} AND t.status = 'PENDING' AND t.deleted = 0
             ) pending
             ORDER BY createdTime DESC, id DESC
             """)

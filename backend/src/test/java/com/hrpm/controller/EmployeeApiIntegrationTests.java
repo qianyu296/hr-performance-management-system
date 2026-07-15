@@ -132,12 +132,12 @@ class EmployeeApiIntegrationTests {
     }
 
     @Test
-    void ordinaryUpdateDoesNotChangeEmploymentStatus() throws Exception {
+    void ordinaryProfileUpdateDoesNotChangeEmploymentStatus() throws Exception {
         seedEmployee(99205L, "EMP_TEST_005", "Before", "FORMAL", 0);
         mockMvc.perform(patch("/employees/99205").header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"After","gender":"MALE","departmentId":"99101","positionId":"99102","rankId":"99103","hireDate":"2025-01-01","version":"0"}
+                                {"name":"After","gender":"MALE","version":"0"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("After"))
@@ -151,10 +151,39 @@ class EmployeeApiIntegrationTests {
         mockMvc.perform(patch("/employees/99206").header("Authorization", token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Changed","departmentId":"99101","positionId":"99102","hireDate":"2025-01-01","version":"1"}
+                                {"name":"Changed","version":"1"}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+    }
+
+    @Test
+    void ordinaryProfileUpdateRejectsEmploymentFields() throws Exception {
+        seedEmployee(99207L, "EMP_TEST_007", "Protected", "FORMAL", 0);
+        for (String payload : new String[] {
+                "{\"name\":\"Protected\",\"version\":\"0\",\"departmentId\":\"99101\"}",
+                "{\"name\":\"Protected\",\"version\":\"0\",\"positionId\":\"99102\"}",
+                "{\"name\":\"Protected\",\"version\":\"0\",\"rankId\":\"99103\"}",
+                "{\"name\":\"Protected\",\"version\":\"0\",\"managerEmployeeId\":\"99205\"}",
+                "{\"name\":\"Protected\",\"version\":\"0\",\"employmentStatus\":\"SUSPENDED\"}"
+        }) {
+            mockMvc.perform(patch("/employees/99207").header("Authorization", token())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Test
+    void createRejectsUnknownEmploymentStatus() throws Exception {
+        mockMvc.perform(post("/employees").header("Authorization", token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"employeeNo":"EMP_TEST_008","name":"Invalid status","departmentId":"99101","positionId":"99102","employmentStatus":"UNKNOWN","hireDate":"2026-07-13"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
     @Test

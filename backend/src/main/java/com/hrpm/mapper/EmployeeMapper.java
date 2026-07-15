@@ -72,9 +72,43 @@ public interface EmployeeMapper {
     @Select("SELECT COUNT(*) FROM hr_employee WHERE employee_no=#{employeeNo} AND deleted=0")
     int countByEmployeeNo(@Param("employeeNo") String employeeNo);
 
+    @Select("SELECT " + COLUMNS + " FROM hr_employee e JOIN hr_department d ON d.id=e.department_id AND d.deleted=0 JOIN hr_position p ON p.id=e.position_id AND p.deleted=0 LEFT JOIN hr_rank r ON r.id=e.rank_id AND r.deleted=0 LEFT JOIN hr_employee m ON m.id=e.manager_employee_id AND m.deleted=0 WHERE e.employee_no=#{employeeNo} AND e.deleted=0")
+    Employee findByEmployeeNo(@Param("employeeNo") String employeeNo);
+
     @Insert("INSERT INTO hr_employee (id,employee_no,name,gender,department_id,position_id,rank_id,manager_employee_id,employment_status,hire_date,probation_start_date,probation_end_date) VALUES (#{id},#{employeeNo},#{name},#{gender},#{departmentId},#{positionId},#{rankId},#{managerEmployeeId},#{employmentStatus},#{hireDate},#{probationStartDate},#{probationEndDate})")
     int insert(Employee employee);
 
-    @Update("UPDATE hr_employee SET name=#{name},gender=#{gender},department_id=#{departmentId},position_id=#{positionId},rank_id=#{rankId},manager_employee_id=#{managerEmployeeId},hire_date=#{hireDate},probation_start_date=#{probationStartDate},probation_end_date=#{probationEndDate},version=version+1 WHERE id=#{id} AND version=#{version} AND deleted=0")
+    @Update("UPDATE hr_employee SET name=#{name},gender=#{gender},version=version+1 WHERE id=#{id} AND version=#{version} AND deleted=0")
     int update(Employee employee);
+
+    @Update("""
+            UPDATE hr_employee
+            SET employee_no = #{employeeNo},
+                name = #{name},
+                gender = #{gender},
+                department_id = #{departmentId},
+                position_id = #{positionId},
+                rank_id = #{rankId},
+                manager_employee_id = #{managerEmployeeId},
+                employment_status = #{employmentStatus},
+                hire_date = #{hireDate},
+                probation_start_date = #{probationStartDate},
+                probation_end_date = #{probationEndDate},
+                termination_date = #{terminationDate},
+                updated_by = #{updatedBy},
+                version = version + 1
+            WHERE id = #{id}
+              AND version = #{version}
+              AND deleted = 0
+            """)
+    int updateAssignment(@Param("id") long id, @Param("employeeNo") String employeeNo, @Param("name") String name,
+                         @Param("gender") String gender, @Param("departmentId") long departmentId,
+                         @Param("positionId") long positionId, @Param("rankId") Long rankId,
+                         @Param("managerEmployeeId") Long managerEmployeeId,
+                         @Param("employmentStatus") String employmentStatus,
+                         @Param("hireDate") java.time.LocalDate hireDate,
+                         @Param("probationStartDate") java.time.LocalDate probationStartDate,
+                         @Param("probationEndDate") java.time.LocalDate probationEndDate,
+                         @Param("terminationDate") java.time.LocalDate terminationDate,
+                         @Param("updatedBy") Long updatedBy, @Param("version") int version);
 }

@@ -21,6 +21,7 @@ public class EmployeeService {
     private final PositionMapper positionMapper;
     private final RankMapper rankMapper;
     private final EmployeeDataScopeResolver dataScopeResolver;
+    private final OrganizationAccessService organizationAccessService;
     private final UserAccountMapper userAccountMapper;
     private final PasswordEncoder passwordEncoder;
     private final IdGenerator idGenerator;
@@ -28,7 +29,7 @@ public class EmployeeService {
 
     public EmployeeService(EmployeeMapper employeeMapper, DepartmentMapper departmentMapper,
                            PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator, EmployeeDataScopeResolver dataScopeResolver,
-                           UserAccountMapper userAccountMapper, PasswordEncoder passwordEncoder,
+                           OrganizationAccessService organizationAccessService, UserAccountMapper userAccountMapper, PasswordEncoder passwordEncoder,
                            LeaveBalanceProvisioningService leaveBalanceProvisioningService) {
         this.employeeMapper = employeeMapper;
         this.departmentMapper = departmentMapper;
@@ -36,6 +37,7 @@ public class EmployeeService {
         this.rankMapper = rankMapper;
         this.idGenerator = idGenerator;
         this.dataScopeResolver = dataScopeResolver;
+        this.organizationAccessService = organizationAccessService;
         this.userAccountMapper = userAccountMapper;
         this.passwordEncoder = passwordEncoder;
         this.leaveBalanceProvisioningService = leaveBalanceProvisioningService;
@@ -59,43 +61,36 @@ public class EmployeeService {
     }
 
     public Employee getForUser(long userId, long id) {
-        EmployeeDataScope scope = dataScopeResolver.resolve(userId);
-        if (scope.isEmpty()) throw new ResourceNotFoundException("Employee not found");
         Employee employee = get(id);
-        if (!scope.unrestricted()
-                && !scope.employeeIds().contains(employee.id())
-                && !scope.departmentIds().contains(employee.departmentId())) {
-            throw new ResourceNotFoundException("Employee not found");
-        }
+        organizationAccessService.requireReadableEmployee(userId, employee);
         return employee;
     }
 
     @Transactional
-    public CreatedEmployeeVO create(CreateEmployeeDTO request) {
+    public CreatedEmployeeVO create(long userId, CreateEmployeeDTO request) {
+        organizationAccessService.requireWritableDepartment(userId, parseId(request.departmentId(), "Invalid department ID"));
         if (employeeMapper.countByEmployeeNo(request.employeeNo()) > 0) throw new DuplicateResourceException("Employee number already exists");
         String username = request.employeeNo().trim().toLowerCase(Locale.ROOT);
         if (userAccountMapper.findByUsername(username) != null) throw new DuplicateResourceException("Employee account username already exists");
         long id = idGenerator.nextId();
         References refs = validateReferences(id, request.departmentId(), request.positionId(), request.rankId(), request.managerEmployeeId());
+        if (refs.managerId() != null) organizationAccessService.requireWritableEmployee(userId, get(refs.managerId()));
+        String employmentStatus = validateEmploymentStatus(request.employmentStatus());
         Employee employee = new Employee(id, request.employeeNo(), request.name(), request.gender(), refs.departmentId(), null,
-                refs.positionId(), null, refs.rankId(), null, refs.managerId(), null, request.employmentStatus(), request.hireDate(),
+                refs.positionId(), null, refs.rankId(), null, refs.managerId(), null, employmentStatus, request.hireDate(),
                 request.probationStartDate(), request.probationEndDate(), 0);
         employeeMapper.insert(employee);
-        String initialPassword = temporaryPassword();
-        long userId = idGenerator.nextId();
-        userAccountMapper.insertEmployeeAccount(userId, username, passwordEncoder.encode(initialPassword), id);
-        if (userAccountMapper.assignEmployeeSelfServiceRole(idGenerator.nextId(), userId) != 1) throw new IllegalStateException("Employee self-service role is unavailable");
-        leaveBalanceProvisioningService.initializeForEmployee(id, java.time.LocalDate.now().getYear());
+        String initialPassword = ensureActiveEmployeeAccount(id, username);
         return new CreatedEmployeeVO(EmployeeVO.from(get(id)), username, initialPassword);
     }
 
     @Transactional
-    public Employee update(long id, UpdateEmployeeDTO request) {
+    public Employee update(long userId, long id, UpdateEmployeeDTO request) {
         Employee current = get(id);
-        References refs = validateReferences(id, request.departmentId(), request.positionId(), request.rankId(), request.managerEmployeeId());
-        Employee employee = new Employee(id, current.employeeNo(), request.name(), request.gender(), refs.departmentId(), null,
-                refs.positionId(), null, refs.rankId(), null, refs.managerId(), null, current.employmentStatus(), request.hireDate(),
-                request.probationStartDate(), request.probationEndDate(), Integer.parseInt(request.version()));
+        organizationAccessService.requireWritableEmployee(userId, current);
+        Employee employee = new Employee(id, current.employeeNo(), request.name(), request.gender(), current.departmentId(), null,
+                current.positionId(), null, current.rankId(), null, current.managerEmployeeId(), null, current.employmentStatus(), current.hireDate(),
+                current.probationStartDate(), current.probationEndDate(), parseVersion(request.version()));
         if (employeeMapper.update(employee) == 0) throw new VersionConflictException();
         return get(id);
     }
@@ -121,7 +116,61 @@ public class EmployeeService {
         return new References(department, position, rank, manager);
     }
 
-    private Long parseNullable(String value) { return value == null || value.isBlank() ? null : Long.parseLong(value); }
+    private String validateEmploymentStatus(String value) {
+        try {
+            return EmploymentStatus.valueOf(value).name();
+        } catch (IllegalArgumentException exception) {
+            throw new OrganizationReferenceInvalidException("Invalid employment status");
+        }
+    }
+
+    private long parseId(String value, String message) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            throw new OrganizationReferenceInvalidException(message);
+        }
+    }
+
+    private int parseVersion(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException exception) {
+            throw new OrganizationReferenceInvalidException("Invalid employee version");
+        }
+    }
+
+    private Long parseNullable(String value) { return value == null || value.isBlank() ? null : parseId(value, "Invalid organization reference"); }
+
+    @Transactional
+    public String ensureActiveEmployeeAccount(long employeeId, String employeeNo) {
+        String username = employeeNo.trim().toLowerCase(Locale.ROOT);
+        UserAccount existing = userAccountMapper.findByEmployeeId(employeeId);
+        if (existing != null) {
+            if (!"ACTIVE".equals(existing.status())) {
+                userAccountMapper.activateByEmployeeId(employeeId);
+            }
+            return existing.username();
+        }
+        UserAccount byUsername = userAccountMapper.findByUsername(username);
+        if (byUsername != null) {
+            throw new DuplicateResourceException("Employee account username already exists");
+        }
+        String initialPassword = temporaryPassword();
+        long accountUserId = idGenerator.nextId();
+        userAccountMapper.insertEmployeeAccount(accountUserId, username, passwordEncoder.encode(initialPassword), employeeId);
+        if (userAccountMapper.assignEmployeeSelfServiceRole(idGenerator.nextId(), accountUserId) != 1) {
+            throw new IllegalStateException("Employee self-service role is unavailable");
+        }
+        leaveBalanceProvisioningService.initializeForEmployee(employeeId, java.time.LocalDate.now().getYear());
+        return initialPassword;
+    }
+
+    @Transactional
+    public void disableEmployeeAccount(long employeeId) {
+        userAccountMapper.disableForEmployee(employeeId);
+    }
+
     private String temporaryPassword() {
         final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
         SecureRandom random = new SecureRandom(); StringBuilder value = new StringBuilder("Hrpm!");

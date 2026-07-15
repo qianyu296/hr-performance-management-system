@@ -4,6 +4,7 @@ import com.hrpm.entity.Department;
 import com.hrpm.entity.EmployeeDataScope;
 import com.hrpm.entity.Employee;
 import com.hrpm.common.exception.DataScopeDeniedException;
+import com.hrpm.common.exception.ResourceNotFoundException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +51,15 @@ public class OrganizationAccessService {
                 && !scope.employeeIds().contains(employee.id())
                 && !scope.departmentIds().contains(employee.departmentId())) {
             throw new DataScopeDeniedException();
+        }
+    }
+
+    public void requireReadableEmployee(long userId, Employee employee) {
+        EmployeeDataScope scope = dataScopeResolver.resolve(userId);
+        if (!scope.unrestricted()
+                && !scope.employeeIds().contains(employee.id())
+                && !scope.departmentIds().contains(employee.departmentId())) {
+            throw new ResourceNotFoundException("Employee not found");
         }
     }
 

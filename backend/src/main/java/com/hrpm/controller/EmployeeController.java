@@ -5,17 +5,25 @@ import com.hrpm.dto.CreateEmployeeDTO;
 import com.hrpm.dto.UpdateEmployeeDTO;
 import com.hrpm.security.AuthenticatedUser;
 import com.hrpm.service.EmployeeService;
+import com.hrpm.service.PersonnelChangeService;
 import com.hrpm.vo.*;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/employees")
 public class EmployeeController {
     private final EmployeeService service;
-    public EmployeeController(EmployeeService service) { this.service = service; }
+    private final PersonnelChangeService personnelChangeService;
+
+    public EmployeeController(EmployeeService service, PersonnelChangeService personnelChangeService) {
+        this.service = service;
+        this.personnelChangeService = personnelChangeService;
+    }
 
     @GetMapping
     @PreAuthorize("hasAuthority('org:read')")
@@ -36,9 +44,21 @@ public class EmployeeController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('org:manage')")
-    public ApiResponse<CreatedEmployeeVO> create(@Valid @RequestBody CreateEmployeeDTO request) { return ApiResponse.success(service.create(request)); }
+    public ApiResponse<CreatedEmployeeVO> create(@AuthenticationPrincipal AuthenticatedUser user, @Valid @RequestBody CreateEmployeeDTO request) {
+        return ApiResponse.success(service.create(user.userId(), request));
+    }
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasAuthority('org:manage')")
-    public ApiResponse<EmployeeVO> update(@PathVariable long id, @Valid @RequestBody UpdateEmployeeDTO request) { return ApiResponse.success(EmployeeVO.from(service.update(id, request))); }
+    public ApiResponse<EmployeeVO> update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable long id,
+                                          @Valid @RequestBody UpdateEmployeeDTO request) {
+        return ApiResponse.success(EmployeeVO.from(service.update(user.userId(), id, request)));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("hasAuthority('org:read')")
+    public ApiResponse<List<com.hrpm.vo.PersonnelChangeVOs.EmployeeHistoryVO>> history(@AuthenticationPrincipal AuthenticatedUser user,
+                                                                                        @PathVariable long id) {
+        return ApiResponse.success(personnelChangeService.history(user.userId(), id));
+    }
 }

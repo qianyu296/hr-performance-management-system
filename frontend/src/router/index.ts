@@ -11,6 +11,9 @@ import LoginView from '@/views/LoginView.vue'
 import WorkflowTasksView from '@/views/WorkflowTasksView.vue'
 import WorkflowTemplatesView from '@/views/WorkflowTemplatesView.vue'
 import OrganizationEmployeesView from '@/views/OrganizationEmployeesView.vue'
+import OrganizationDepartmentsView from '@/views/OrganizationDepartmentsView.vue'
+import PersonnelChangesView from '@/views/PersonnelChangesView.vue'
+import PersonnelChangeDetailView from '@/views/PersonnelChangeDetailView.vue'
 import SystemAccessView from '@/views/SystemAccessView.vue'
 import ReportsOverviewView from '@/views/ReportsOverviewView.vue'
 import ChangePasswordView from '@/views/ChangePasswordView.vue'
@@ -18,8 +21,9 @@ import { useAuthStore } from '@/stores/auth'
 import { navigationItems } from './navigation'
 
 const routedComponents: Record<string, unknown> = {
-  '/org/departments': OrganizationEmployeesView,
+  '/org/departments': OrganizationDepartmentsView,
   '/org/employees': OrganizationEmployeesView,
+  '/personnel/changes': PersonnelChangesView,
   '/attendance/leave': LeaveManagementView,
   '/attendance/leave-types': LeaveTypeManagementView,
   '/attendance/overtime': OvertimeManagementView,
@@ -52,6 +56,12 @@ const router = createRouter({
         component: routedComponents[item.path] ?? DomainView,
         meta: { title: item.title, description: item.description, permission: item.permission },
       })),
+    {
+      path: '/personnel/changes/:id',
+      name: 'personnel-change-detail',
+      component: PersonnelChangeDetailView,
+      meta: { title: '异动详情', description: '查看异动明细、前后差异和交接事项', permission: 'personnel:read' },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
   ],
 })

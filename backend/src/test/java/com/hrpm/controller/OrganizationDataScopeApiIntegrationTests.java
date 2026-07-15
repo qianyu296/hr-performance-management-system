@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -110,17 +111,41 @@ class OrganizationDataScopeApiIntegrationTests {
         mockMvc.perform(patch("/employees/{id}", OUTSIDE_EMPLOYEE_ID)
                         .header("Authorization", departmentTreeToken())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(employeeUpdate("Outside employee", OUTSIDE_DEPARTMENT_ID)))
+                        .content(profileUpdate("Outside employee")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("DATA_SCOPE_DENIED"));
     }
 
     @Test
-    void departmentTreeScopedUserCannotTransferEmployeeOutsideScope() throws Exception {
+    void ordinaryProfileEndpointRejectsDirectEmploymentTransfer() throws Exception {
         mockMvc.perform(patch("/employees/{id}", AUTHORIZED_EMPLOYEE_ID)
                         .header("Authorization", departmentTreeToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(employeeUpdate("Authorized employee", OUTSIDE_DEPARTMENT_ID)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void departmentTreeScopedUserCannotCreateEmployeeInOutsideDepartment() throws Exception {
+        mockMvc.perform(post("/employees")
+                        .header("Authorization", departmentTreeToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"employeeNo":"ORG_SCOPE_NEW_OUTSIDE","name":"Outside employee","departmentId":"97104","positionId":"97301","rankId":"97302","employmentStatus":"PROBATION","hireDate":"2026-01-01"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DATA_SCOPE_DENIED"));
+    }
+
+    @Test
+    void departmentTreeScopedUserCannotAssignManagerOutsideScopeWhenCreatingEmployee() throws Exception {
+        mockMvc.perform(post("/employees")
+                        .header("Authorization", departmentTreeToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"employeeNo":"ORG_SCOPE_NEW_MANAGER","name":"New employee","departmentId":"97103","positionId":"97301","rankId":"97302","managerEmployeeId":"97203","employmentStatus":"PROBATION","hireDate":"2026-01-01"}
+                                """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("DATA_SCOPE_DENIED"));
     }
@@ -218,6 +243,10 @@ class OrganizationDataScopeApiIntegrationTests {
         return """
                 {"name":"%s","gender":"MALE","departmentId":"%d","positionId":"97301","rankId":"97302","hireDate":"2025-01-01","version":"0"}
                 """.formatted(name, departmentId);
+    }
+
+    private String profileUpdate(String name) {
+        return "{\"name\":\"%s\",\"gender\":\"MALE\",\"version\":\"0\"}".formatted(name);
     }
 
     private String allToken() {

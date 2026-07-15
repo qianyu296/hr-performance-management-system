@@ -27,6 +27,14 @@ public interface UserAccountMapper {
             """)
     UserAccount findById(@Param("id") long id);
 
+    @Select("""
+            SELECT id, username, password_hash AS passwordHash, employee_id AS employeeId, status, session_version AS sessionVersion,
+                   password_change_required AS passwordChangeRequired
+            FROM sys_user
+            WHERE employee_id = #{employeeId} AND deleted = 0
+            """)
+    UserAccount findByEmployeeId(@Param("employeeId") long employeeId);
+
     @Insert("INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version, password_change_required) VALUES (#{id}, #{username}, #{passwordHash}, #{employeeId}, 'ACTIVE', 0, 1)")
     int insertEmployeeAccount(@Param("id") long id, @Param("username") String username, @Param("passwordHash") String passwordHash, @Param("employeeId") long employeeId);
 
@@ -48,4 +56,24 @@ public interface UserAccountMapper {
               AND deleted = 0
             """)
     int incrementSessionVersion(@Param("id") long id, @Param("sessionVersion") int sessionVersion);
+
+    @Update("""
+            UPDATE sys_user
+            SET status = 'DISABLED',
+                session_version = session_version + 1
+            WHERE employee_id = #{employeeId}
+              AND deleted = 0
+              AND status = 'ACTIVE'
+            """)
+    int disableForEmployee(@Param("employeeId") long employeeId);
+
+    @Update("""
+            UPDATE sys_user
+            SET status = 'ACTIVE',
+                session_version = session_version + 1
+            WHERE employee_id = #{employeeId}
+              AND deleted = 0
+              AND status <> 'ACTIVE'
+            """)
+    int activateByEmployeeId(@Param("employeeId") long employeeId);
 }
