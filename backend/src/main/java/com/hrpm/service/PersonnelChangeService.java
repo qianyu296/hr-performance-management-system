@@ -99,7 +99,7 @@ public class PersonnelChangeService {
         this.objectMapper = objectMapper;
     }
 
-    public PageVO<PersonnelChangeListItemVO> list(long userId, int page, int pageSize, Long employeeId,
+    public PageVO<PersonnelChangeListItemVO> list(long userId, int page, int pageSize, Long employeeId, Long departmentId,
                                                   String changeType, String status,
                                                   LocalDate fromDate, LocalDate toDate) {
         if (page < 1 || pageSize < 1 || pageSize > 100) {
@@ -110,12 +110,12 @@ public class PersonnelChangeService {
         if (!scope.unrestricted() && scope.employeeIds().isEmpty() && scope.departmentIds().isEmpty() && !manage) {
             return new PageVO<>(List.of(), 0, page, pageSize);
         }
-        List<PersonnelChangeListItemVO> records = personnelChangeMapper.findPage(userId, employeeId, changeType, status, fromDate, toDate,
+        List<PersonnelChangeListItemVO> records = personnelChangeMapper.findPage(userId, employeeId, departmentId, changeType, status, fromDate, toDate,
                         scope.unrestricted() || manage, scope.employeeIds(), scope.departmentIds(), (page - 1) * pageSize, pageSize)
                 .stream()
                 .map(change -> PersonnelChangeListItemVO.from(change, resolveEmployeeName(change)))
                 .toList();
-        long total = personnelChangeMapper.count(userId, employeeId, changeType, status, fromDate, toDate,
+        long total = personnelChangeMapper.count(userId, employeeId, departmentId, changeType, status, fromDate, toDate,
                 scope.unrestricted() || manage, scope.employeeIds(), scope.departmentIds());
         return new PageVO<>(records, total, page, pageSize);
     }
@@ -370,14 +370,24 @@ public class PersonnelChangeService {
     }
 
     private PersonnelChangeDetailVO toDetailVO(long userId, PersonnelChange change) {
+        boolean manage = hasPermission(userId, "personnel:manage");
+        boolean create = hasPermission(userId, "personnel:create");
+        Long currentEmployeeId = null;
+        if (!manage) {
+            UserAccount account = userAccountMapper.findById(userId);
+            currentEmployeeId = account == null ? null : account.employeeId();
+        }
         List<ExitHandoverItemVO> handoverItems = List.of();
         if (parseChangeType(change.changeType()) == PersonnelChangeType.TERMINATION) {
             ExitHandover handover = personnelChangeMapper.findExitHandoverByChangeId(change.id());
             if (handover != null) {
-                handoverItems = personnelChangeMapper.listExitHandoverItems(handover.id()).stream().map(ExitHandoverItemVO::from).toList();
+                Long receiverEmployeeId = currentEmployeeId;
+                handoverItems = personnelChangeMapper.listExitHandoverItems(handover.id()).stream()
+                        .map(item -> ExitHandoverItemVO.from(item, create && "PENDING".equals(item.status())
+                                && (manage || (receiverEmployeeId != null && receiverEmployeeId.equals(item.receiverEmployeeId())))))
+                        .toList();
             }
         }
-        boolean manage = hasPermission(userId, "personnel:manage");
         return new PersonnelChangeDetailVO(Long.toString(change.id()), change.changeNo(),
                 change.employeeId() == null ? null : Long.toString(change.employeeId()), change.changeType(),
                 change.applicationDate(), change.effectiveDate(), change.reason(),
@@ -386,12 +396,15 @@ public class PersonnelChangeService {
                 change.workflowInstanceId() == null ? null : Long.toString(change.workflowInstanceId()),
                 change.status(), change.createdBy() == null ? null : Long.toString(change.createdBy()),
                 change.createdTime(), Integer.toString(change.version()), handoverItems,
-                PersonnelChangeStatus.DRAFT.name().equals(change.status()) && (manage || change.createdBy() == userId),
-                PersonnelChangeStatus.DRAFT.name().equals(change.status()) && (manage || change.createdBy() == userId),
-                PersonnelChangeStatus.IN_PROGRESS.name().equals(change.status()) && change.createdBy() != null && change.createdBy() == userId,
+                create && PersonnelChangeStatus.DRAFT.name().equals(change.status()) && (manage || change.createdBy() == userId),
+                create && PersonnelChangeStatus.DRAFT.name().equals(change.status()) && (manage || change.createdBy() == userId),
+                create && PersonnelChangeStatus.IN_PROGRESS.name().equals(change.status()) && change.createdBy() != null && change.createdBy() == userId,
                 parseChangeType(change.changeType()) == PersonnelChangeType.TERMINATION
-                        && (PersonnelChangeStatus.DRAFT.name().equals(change.status()) || PersonnelChangeStatus.IN_PROGRESS.name().equals(change.status()))
-                        && (manage || change.createdBy() == userId));
+                && (PersonnelChangeStatus.DRAFT.name().equals(change.status()) || PersonnelChangeStatus.IN_PROGRESS.name().equals(change.status()))
+                        && create && (manage || change.createdBy() == userId),
+                PersonnelChangeStatus.APPROVED.name().equals(change.status())
+                        && !change.effectiveDate().isAfter(LocalDate.now(ZoneOffset.UTC))
+                        && hasPermission(userId, "personnel:execute"));
     }
 
     private PersonnelChange requireOwnedOrManagedChange(long userId, long id) {

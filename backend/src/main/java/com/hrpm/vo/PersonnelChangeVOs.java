@@ -27,13 +27,13 @@ public final class PersonnelChangeVOs {
 
     public record ExitHandoverItemVO(String id, String itemType, String receiverEmployeeId, boolean required,
                                      String status, LocalDateTime completedTime, String confirmedBy,
-                                     String remark, String version) {
-        public static ExitHandoverItemVO from(ExitHandoverItem value) {
+                                     String remark, String version, boolean canConfirm) {
+        public static ExitHandoverItemVO from(ExitHandoverItem value, boolean canConfirm) {
             return new ExitHandoverItemVO(Long.toString(value.id()), value.itemType(),
                     value.receiverEmployeeId() == null ? null : Long.toString(value.receiverEmployeeId()),
                     value.required(), value.status(), value.completedTime(),
                     value.confirmedBy() == null ? null : Long.toString(value.confirmedBy()),
-                    value.remark(), Integer.toString(value.version()));
+                    value.remark(), Integer.toString(value.version()), canConfirm);
         }
     }
 
@@ -41,9 +41,9 @@ public final class PersonnelChangeVOs {
                                           LocalDate applicationDate, LocalDate effectiveDate, String reason,
                                           JsonNode beforeSnapshot, JsonNode afterSnapshot, String workflowInstanceId,
                                           String status, String createdBy, LocalDateTime createdTime,
-                                          String version, List<ExitHandoverItemVO> handoverItems,
-                                          boolean canEdit, boolean canSubmit, boolean canWithdraw,
-                                          boolean canMaintainHandover) {
+                                           String version, List<ExitHandoverItemVO> handoverItems,
+                                           boolean canEdit, boolean canSubmit, boolean canWithdraw,
+                                           boolean canMaintainHandover, boolean canExecute) {
     }
 
     public record EmployeeHistoryVO(String id, String employeeId, String changeId, String eventType,

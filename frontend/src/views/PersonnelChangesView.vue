@@ -9,7 +9,7 @@ import PersonnelChangeEditorDrawer from '@/components/personnel/PersonnelChangeE
 import { fetchDepartmentTree, fetchEmployeeOptions, fetchPositions, fetchRanks } from '@/api/organization'
 import { createPersonnelChange, fetchPersonnelChange, fetchPersonnelChanges, updatePersonnelChange } from '@/api/personnel'
 import type { DepartmentNode, EmployeeOption, Position, Rank } from '@/types/organization'
-import type { PersonnelChangeDetail, PersonnelChangeQuery, PersonnelChangeType } from '@/types/personnel'
+import type { PersonnelChangeDetail, PersonnelChangeEditorPayload, PersonnelChangeListItem, PersonnelChangeType, UpdatePersonnelChangePayload } from '@/types/personnel'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,7 +18,7 @@ const departments = ref<DepartmentNode[]>([])
 const positions = ref<Position[]>([])
 const ranks = ref<Rank[]>([])
 const employees = ref<EmployeeOption[]>([])
-const changes = ref<PersonnelChangeQuery extends never ? never[] : any[]>([])
+const changes = ref<PersonnelChangeListItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
@@ -27,10 +27,15 @@ const editingDetail = ref<PersonnelChangeDetail>()
 const initialType = ref<PersonnelChangeType>('TRANSFER')
 const initialEmployeeId = ref<string>()
 const dateRange = ref<[string, string] | null>(null)
-const query = reactive({ page: 1, pageSize: 20, employeeId: '', changeType: '', status: '' })
+const query = reactive({ page: 1, pageSize: 20, employeeId: '', departmentId: '', changeType: '', status: '' })
 
-function errorMessage(error: any) {
-  return error?.response?.data?.message || '请求失败，请稍后重试'
+function errorMessage(error: unknown) {
+  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof message === 'string' ? message : '请求失败，请稍后重试'
+}
+
+function flattenDepartments(nodes: DepartmentNode[]): DepartmentNode[] {
+  return nodes.flatMap((node) => [node, ...flattenDepartments(node.children)])
 }
 
 async function loadReferenceData() {
@@ -53,6 +58,7 @@ async function loadChanges() {
       page: query.page,
       pageSize: query.pageSize,
       employeeId: query.employeeId || undefined,
+      departmentId: query.departmentId || undefined,
       changeType: query.changeType || undefined,
       status: query.status || undefined,
       fromDate: dateRange.value?.[0],
@@ -86,12 +92,12 @@ async function openEdit(id: string) {
   }
 }
 
-async function saveChange(payload: any) {
+async function saveChange(payload: PersonnelChangeEditorPayload | UpdatePersonnelChangePayload) {
   saving.value = true
   try {
     const saved = editingDetail.value
-      ? await updatePersonnelChange(editingDetail.value.id, payload)
-      : await createPersonnelChange(payload)
+      ? await updatePersonnelChange(editingDetail.value.id, payload as UpdatePersonnelChangePayload)
+      : await createPersonnelChange(payload as PersonnelChangeEditorPayload)
     drawerOpen.value = false
     ElMessage.success('异动草稿已保存')
     await loadChanges()
@@ -145,6 +151,9 @@ onMounted(async () => {
       <el-button type="primary" :icon="Plus" @click="openCreate('TRANSFER')">新建异动</el-button>
     </template>
     <template #filters>
+      <el-select v-model="query.departmentId" filterable clearable placeholder="按当前部门筛选">
+        <el-option v-for="item in flattenDepartments(departments)" :key="item.id" :label="item.name" :value="item.id" />
+      </el-select>
       <el-select v-model="query.employeeId" filterable clearable placeholder="按员工筛选">
         <el-option v-for="item in employees" :key="item.id" :label="`${item.name} · ${item.employeeNo}`" :value="item.id" />
       </el-select>

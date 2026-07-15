@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import { Edit, Plus } from '@element-plus/icons-vue'
-import type { Position, Rank } from '@/types/organization'
+import type { CreatePositionPayload, CreateRankPayload, Position, Rank, UpdatePositionPayload, UpdateRankPayload } from '@/types/organization'
 
 const props = defineProps<{ modelValue: boolean; positions: Position[]; ranks: Rank[]; saving: boolean }>()
-const emit = defineEmits<{ 'update:modelValue': [value: boolean]; savePosition: [payload: any, id?: string]; saveRank: [payload: any, id?: string] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  savePosition: [payload: CreatePositionPayload | UpdatePositionPayload, id?: string]
+  saveRank: [payload: CreateRankPayload | UpdateRankPayload, id?: string]
+}>()
 const tab = ref('positions')
 const position = reactive({ id: '', code: '', name: '', jobFamily: '', description: '', sortNo: 0, status: 'ACTIVE', version: '0' })
 const rank = reactive({ id: '', code: '', name: '', rankOrder: 0, status: 'ACTIVE', version: '0' })

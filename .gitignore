@@ -25,3 +25,7 @@ Thumbs.db
 
 # Local Git worktrees
 .worktrees/
+
+# Apifox native scenario files contain the local Apifox project ID and are generated on demand.
+tools/apifox/hrpm-non-performance-api-scenario.create.json
+tools/apifox/hrpm-non-performance-api-scenario.update.json

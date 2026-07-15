@@ -269,7 +269,8 @@ class PersonnelChangeApiIntegrationTests {
         mockMvc.perform(get("/personnel-changes/{id}", changeId).header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("APPROVED"))
-                .andExpect(jsonPath("$.data.version").value("2"));
+                .andExpect(jsonPath("$.data.version").value("2"))
+                .andExpect(jsonPath("$.data.canExecute").value(false));
 
         assertEquals(CURRENT_DEPARTMENT_ID, jdbcTemplate.queryForObject("SELECT department_id FROM hr_employee WHERE id = ?", Long.class, EMPLOYEE_ID));
 
@@ -278,6 +279,25 @@ class PersonnelChangeApiIntegrationTests {
                         .content("{\"version\":\"2\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("STATE_CONFLICT"));
+    }
+
+    @Test
+    void listFiltersChangesByCurrentEmployeeDepartment() throws Exception {
+        String token = bearer(HR_USER_ID, "personnel-hr");
+        createTransferChange(token, LocalDate.now());
+
+        mockMvc.perform(get("/personnel-changes")
+                        .header("Authorization", token)
+                        .param("departmentId", Long.toString(CURRENT_DEPARTMENT_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].employeeId").value(Long.toString(EMPLOYEE_ID)));
+
+        mockMvc.perform(get("/personnel-changes")
+                        .header("Authorization", token)
+                        .param("departmentId", Long.toString(TARGET_DEPARTMENT_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(0));
     }
 
     @Test
@@ -298,7 +318,8 @@ class PersonnelChangeApiIntegrationTests {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.handoverItems[0].status").value("PENDING"));
+                .andExpect(jsonPath("$.data.handoverItems[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.data.handoverItems[0].canConfirm").value(true));
 
         mockMvc.perform(post("/personnel-changes/{id}/submit", changeId).header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)

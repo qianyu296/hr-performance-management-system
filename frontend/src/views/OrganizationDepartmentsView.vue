@@ -21,8 +21,14 @@ const dialogMode = ref<DialogMode>('create')
 const dialogDepartment = ref<DepartmentNode>()
 const dialogParentId = ref<string>()
 
-function errorMessage(error: any) {
-  return error?.response?.data?.message || '请求失败，请稍后重试'
+function errorMessage(error: unknown) {
+  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof message === 'string' ? message : '请求失败，请稍后重试'
+}
+
+function errorCode(error: unknown) {
+  const code = (error as { response?: { data?: { code?: unknown } } })?.response?.data?.code
+  return typeof code === 'string' ? code : undefined
 }
 
 function flattenDepartments(nodes: DepartmentNode[]): DepartmentNode[] {
@@ -49,6 +55,11 @@ async function loadData() {
       selectedId.value = departmentTree[0]?.id
     }
   } catch (error) {
+    if (errorCode(error) === 'VERSION_CONFLICT') {
+      ElMessage.warning('部门已被其他人更新，已刷新当前数据')
+      await loadData()
+      return
+    }
     ElMessage.error(errorMessage(error))
   } finally {
     loading.value = false

@@ -38,6 +38,7 @@ export interface ExitHandoverItem {
   confirmedBy: string | null
   remark: string | null
   version: string
+  canConfirm: boolean
 }
 
 export interface PersonnelChangeDetail {
@@ -60,6 +61,7 @@ export interface PersonnelChangeDetail {
   canSubmit: boolean
   canWithdraw: boolean
   canMaintainHandover: boolean
+  canExecute: boolean
 }
 
 export interface PersonnelChangePage {
@@ -73,6 +75,7 @@ export interface PersonnelChangeQuery {
   page: number
   pageSize: number
   employeeId?: string
+  departmentId?: string
   changeType?: string
   status?: string
   fromDate?: string
