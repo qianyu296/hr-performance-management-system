@@ -10,7 +10,7 @@ import EmployeeEditorDrawer from '@/components/organization/EmployeeEditorDrawer
 import PositionRankDialog from '@/components/organization/PositionRankDialog.vue'
 import { createPosition, createRank, fetchDepartmentTree, fetchEmployee, fetchEmployees, fetchPositions, fetchRanks, updateEmployee, updatePosition, updateRank } from '@/api/organization'
 import { fetchEmployeeHistory } from '@/api/personnel'
-import type { CreateEmployeePayload, DepartmentNode, EmployeeDetail, EmployeeListItem, Position, Rank, UpdateEmployeePayload } from '@/types/organization'
+import type { CreateEmployeePayload, CreatePositionPayload, CreateRankPayload, DepartmentNode, EmployeeDetail, EmployeeListItem, Position, Rank, UpdateEmployeePayload, UpdatePositionPayload, UpdateRankPayload } from '@/types/organization'
 import type { EmployeeHistoryItem } from '@/types/personnel'
 
 const departments = ref<DepartmentNode[]>([])
@@ -29,8 +29,14 @@ const currentEmployee = ref<EmployeeDetail>()
 const router = useRouter()
 const query = reactive({ page: 1, pageSize: 20, keyword: '', departmentId: undefined as string | undefined, employmentStatus: '' })
 
-function errorMessage(error: any) {
-  return error?.response?.data?.message || '请求失败，请稍后重试'
+function errorMessage(error: unknown) {
+  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof message === 'string' ? message : '请求失败，请稍后重试'
+}
+
+function errorCode(error: unknown) {
+  const code = (error as { response?: { data?: { code?: unknown } } })?.response?.data?.code
+  return typeof code === 'string' ? code : undefined
 }
 
 async function loadReferenceData() {
@@ -74,21 +80,21 @@ async function saveEmployee(payload: CreateEmployeePayload | UpdateEmployeePaylo
     ElMessage.success('员工档案已保存')
     drawerOpen.value = false
     await loadEmployees()
-  } catch (error: any) {
-    if (error?.response?.data?.code === 'VERSION_CONFLICT') ElMessage.warning('档案已被其他人更新，请关闭后重新打开')
+  } catch (error) {
+    if (errorCode(error) === 'VERSION_CONFLICT') ElMessage.warning('档案已被其他人更新，请关闭后重新打开')
     else ElMessage.error(errorMessage(error))
   } finally { saving.value = false }
 }
 
-async function savePosition(payload: any, id?: string) {
+async function savePosition(payload: CreatePositionPayload | UpdatePositionPayload, id?: string) {
   saving.value = true
-  try { id ? await updatePosition(id, payload) : await createPosition(payload); positions.value = await fetchPositions(); ElMessage.success('岗位已保存') }
+  try { id ? await updatePosition(id, payload as UpdatePositionPayload) : await createPosition(payload as CreatePositionPayload); positions.value = await fetchPositions(); ElMessage.success('岗位已保存') }
   catch (error) { ElMessage.error(errorMessage(error)) } finally { saving.value = false }
 }
 
-async function saveRank(payload: any, id?: string) {
+async function saveRank(payload: CreateRankPayload | UpdateRankPayload, id?: string) {
   saving.value = true
-  try { id ? await updateRank(id, payload) : await createRank(payload); ranks.value = await fetchRanks(); ElMessage.success('职级已保存') }
+  try { id ? await updateRank(id, payload as UpdateRankPayload) : await createRank(payload as CreateRankPayload); ranks.value = await fetchRanks(); ElMessage.success('职级已保存') }
   catch (error) { ElMessage.error(errorMessage(error)) } finally { saving.value = false }
 }
 

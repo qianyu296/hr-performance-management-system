@@ -30,13 +30,14 @@ public class PersonnelChangeController {
     @PreAuthorize("hasAuthority('personnel:read')")
     public ApiResponse<PageVO<PersonnelChangeListItemVO>> list(@AuthenticationPrincipal AuthenticatedUser user,
                                                                @RequestParam(defaultValue = "1") int page,
-                                                               @RequestParam(defaultValue = "20") int pageSize,
-                                                               @RequestParam(required = false) Long employeeId,
-                                                               @RequestParam(required = false) String changeType,
+                                                                @RequestParam(defaultValue = "20") int pageSize,
+                                                                @RequestParam(required = false) Long employeeId,
+                                                                @RequestParam(required = false) Long departmentId,
+                                                                @RequestParam(required = false) String changeType,
                                                                @RequestParam(required = false) String status,
                                                                @RequestParam(required = false) LocalDate fromDate,
                                                                @RequestParam(required = false) LocalDate toDate) {
-        return ApiResponse.success(service.list(user.userId(), page, pageSize, employeeId, changeType, status, fromDate, toDate));
+        return ApiResponse.success(service.list(user.userId(), page, pageSize, employeeId, departmentId, changeType, status, fromDate, toDate));
     }
 
     @PostMapping

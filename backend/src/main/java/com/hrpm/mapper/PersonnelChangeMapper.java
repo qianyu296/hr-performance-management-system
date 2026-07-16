@@ -14,7 +14,7 @@ import java.util.List;
 
 @Mapper
 public interface PersonnelChangeMapper {
-    String CHANGE_COLUMNS = """
+    String CHANGE_COLUMNS = " " + """
             id, change_no AS changeNo, employee_id AS employeeId, change_type AS changeType,
             application_date AS applicationDate, effective_date AS effectiveDate, reason,
             before_snapshot AS beforeSnapshot, after_snapshot AS afterSnapshot,
@@ -124,6 +124,9 @@ public interface PersonnelChangeMapper {
             FROM hr_personnel_change
             WHERE deleted = 0
             <if test='employeeId != null'>AND employee_id = #{employeeId}</if>
+            <if test='departmentId != null'>AND employee_id IN (
+              SELECT id FROM hr_employee WHERE deleted = 0 AND department_id = #{departmentId}
+            )</if>
             <if test='changeType != null and changeType != ""'>AND change_type = #{changeType}</if>
             <if test='status != null and status != ""'>AND status = #{status}</if>
             <if test='fromDate != null'>AND effective_date &gt;= #{fromDate}</if>
@@ -145,7 +148,7 @@ public interface PersonnelChangeMapper {
             LIMIT #{limit} OFFSET #{offset}
             </script>
             """)
-    List<PersonnelChange> findPage(@Param("userId") long userId, @Param("employeeId") Long employeeId,
+    List<PersonnelChange> findPage(@Param("userId") long userId, @Param("employeeId") Long employeeId, @Param("departmentId") Long departmentId,
                                    @Param("changeType") String changeType, @Param("status") String status,
                                    @Param("fromDate") java.time.LocalDate fromDate, @Param("toDate") java.time.LocalDate toDate,
                                    @Param("unrestricted") boolean unrestricted,
@@ -159,6 +162,9 @@ public interface PersonnelChangeMapper {
             FROM hr_personnel_change
             WHERE deleted = 0
             <if test='employeeId != null'>AND employee_id = #{employeeId}</if>
+            <if test='departmentId != null'>AND employee_id IN (
+              SELECT id FROM hr_employee WHERE deleted = 0 AND department_id = #{departmentId}
+            )</if>
             <if test='changeType != null and changeType != ""'>AND change_type = #{changeType}</if>
             <if test='status != null and status != ""'>AND status = #{status}</if>
             <if test='fromDate != null'>AND effective_date &gt;= #{fromDate}</if>
@@ -178,7 +184,7 @@ public interface PersonnelChangeMapper {
             </if>
             </script>
             """)
-    long count(@Param("userId") long userId, @Param("employeeId") Long employeeId,
+    long count(@Param("userId") long userId, @Param("employeeId") Long employeeId, @Param("departmentId") Long departmentId,
                @Param("changeType") String changeType, @Param("status") String status,
                @Param("fromDate") java.time.LocalDate fromDate, @Param("toDate") java.time.LocalDate toDate,
                @Param("unrestricted") boolean unrestricted,

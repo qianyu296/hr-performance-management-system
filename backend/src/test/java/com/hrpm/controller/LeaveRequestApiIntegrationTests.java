@@ -80,8 +80,8 @@ class LeaveRequestApiIntegrationTests {
                 VALUES (?, 'test-employee', ?, ?, 'ACTIVE', 2)
                 """, 90001L, new BCryptPasswordEncoder().encode("correct-password"), 91001L);
         jdbcTemplate.update("""
-                INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, status)
-                VALUES (?, 'ANNUAL', '年假', 1, 1.00, 'ACTIVE')
+                INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, annual_quota, status)
+                VALUES (?, 'ANNUAL', '年假', 1, 1.00, 80.00, 'ACTIVE')
                 """, 92001L);
     }
 

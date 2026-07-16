@@ -1,0 +1,3931 @@
+{
+  "info": {
+    "_postman_id": "b942b455-2ea8-4ed2-a391-b0e71ef8cb04",
+    "name": "HRPM Non-Performance API Regression",
+    "description": "Apifox-importable local regression suite. It covers every non-performance endpoint and excludes all performance APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('runStamp')) pm.environment.set('runStamp', Date.now().toString());"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Bootstrap and Authentication",
+      "item": [
+        {
+          "name": "API-PUB-01 Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('runStamp')) pm.environment.set('runStamp', Date.now().toString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.test('health is UP', () => pm.expect(pm.response.json().data.status).to.eql('UP'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('adminAccessToken', data.accessToken);",
+                  "pm.environment.set('adminRefreshToken', data.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-hr",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{hrUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('hrAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{managerUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('managerAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{employeeUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('employeeAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-attendance-admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{attendanceAdminUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('attendanceAdminAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-workflow-admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{workflowAdminUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('workflowAdminAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Login api-readonly",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{readonlyUsername}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const data = pm.response.json().data;",
+                  "pm.environment.set('readonlyAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-01 Invalid credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"wrong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(401));",
+                  "pm.test('expected business code', () => pm.expect(pm.response.json().code).to.eql('AUTH_INVALID_CREDENTIALS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-02 Refresh admin token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{adminRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('adminAccessToken', pm.response.json().data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-04 Change password validation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(400));",
+                  "pm.test('expected business code', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ME-01 Current user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ME-02 Current permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "permissions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ME-03 Current menus",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/menus",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "menus"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 Organization Master Data",
+      "item": [
+        {
+          "name": "API-ORG-01 List departments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-02 Create department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_DEPT_{{runStamp}}\",\n  \"name\": \"APIFOX Department {{runStamp}}\",\n  \"parentId\": \"{{testDepartmentId}}\",\n  \"sortNo\": 1,\n  \"status\": \"ACTIVE\",\n  \"effectiveDate\": \"2026-07-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('departmentId', pm.response.json().data.id);",
+                  "pm.environment.set('departmentVersion', pm.response.json().data.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-03 Update department",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Department Updated {{runStamp}}\",\n  \"sortNo\": 2,\n  \"status\": \"ACTIVE\",\n  \"effectiveDate\": \"2026-07-15\",\n  \"version\": \"{{departmentVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('departmentVersion', pm.response.json().data.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-04 Move department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/move",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}",
+                "move"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentId\": \"{{testDepartmentId}}\",\n  \"version\": \"{{departmentVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('departmentVersion', pm.response.json().data.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-05 Disable department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}",
+                "disable"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{departmentVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-06 List positions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/positions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-07 Create position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/positions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_POSITION_{{runStamp}}\",\n  \"name\": \"APIFOX Position {{runStamp}}\",\n  \"jobFamily\": \"APIFOX\",\n  \"description\": \"Created by API test\",\n  \"sortNo\": 1,\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('positionId', pm.response.json().data.id);",
+                  "pm.environment.set('positionVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-08 Update position",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/positions/{{positionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions",
+                "{{positionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Position Updated {{runStamp}}\",\n  \"jobFamily\": \"APIFOX\",\n  \"description\": \"Updated by API test\",\n  \"sortNo\": 2,\n  \"status\": \"ACTIVE\",\n  \"version\": \"{{positionVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('positionVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-09 List ranks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ranks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ranks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-10 Create rank",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ranks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ranks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_RANK_{{runStamp}}\",\n  \"name\": \"APIFOX Rank {{runStamp}}\",\n  \"rankOrder\": 99,\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('rankId', pm.response.json().data.id);",
+                  "pm.environment.set('rankVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-11 Update rank",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ranks/{{rankId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ranks",
+                "{{rankId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Rank Updated {{runStamp}}\",\n  \"rankOrder\": 100,\n  \"status\": \"ACTIVE\",\n  \"version\": \"{{rankVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-12 List employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees?page=1&pageSize=20&keyword=APIFOX_",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees?page=1&pageSize=20&keyword=APIFOX_"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-13 Create employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeNo\": \"APIFOX_EMP_{{runStamp}}\",\n  \"name\": \"APIFOX New Employee {{runStamp}}\",\n  \"gender\": \"FEMALE\",\n  \"departmentId\": \"{{testDepartmentId}}\",\n  \"positionId\": \"{{positionId}}\",\n  \"rankId\": \"{{rankId}}\",\n  \"managerEmployeeId\": \"{{managerEmployeeId}}\",\n  \"employmentStatus\": \"PROBATION\",\n  \"hireDate\": \"2026-07-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const employee = pm.response.json().data.employee;",
+                  "pm.environment.set('createdEmployeeId', employee.id);",
+                  "pm.environment.set('createdEmployeeVersion', employee.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-14 Get employee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/{{createdEmployeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "{{createdEmployeeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-15 Update employee profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/{{createdEmployeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "{{createdEmployeeId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Employee Updated {{runStamp}}\",\n  \"gender\": \"MALE\",\n  \"version\": \"{{createdEmployeeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('createdEmployeeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-16 Employee history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employees/{{createdEmployeeId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "{{createdEmployeeId}}",
+                "history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ORG-AUTH-01 Readonly cannot create a department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{readonlyAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_DENY_{{runStamp}}\",\n  \"name\": \"Denied\",\n  \"sortNo\": 0,\n  \"status\": \"ACTIVE\",\n  \"effectiveDate\": \"2026-07-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "20 Workflow Template Setup",
+      "item": [
+        {
+          "name": "API-WF-08 List workflow templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "templates"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-10 Create leave template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "templates"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_LEAVE_WF_{{runStamp}}\",\n  \"name\": \"APIFOX Leave Workflow {{runStamp}}\",\n  \"businessType\": \"LEAVE\",\n  \"priority\": 999,\n  \"templateVersion\": 1,\n  \"status\": \"ACTIVE\",\n  \"departmentIds\": [\n    \"{{testDepartmentId}}\"\n  ],\n  \"nodes\": [\n    {\n      \"nodeNo\": 1,\n      \"nodeType\": \"SPECIFIC_USER\",\n      \"approverRule\": {\n        \"type\": \"SPECIFIC_USER\",\n        \"userId\": 9900103\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('leaveTemplateId', pm.response.json().data.id);",
+                  "pm.environment.set('leaveTemplateVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-10 Create overtime template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "templates"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_OT_WF_{{runStamp}}\",\n  \"name\": \"APIFOX Overtime Workflow {{runStamp}}\",\n  \"businessType\": \"OVERTIME\",\n  \"priority\": 999,\n  \"templateVersion\": 1,\n  \"status\": \"ACTIVE\",\n  \"departmentIds\": [\n    \"{{testDepartmentId}}\"\n  ],\n  \"nodes\": [\n    {\n      \"nodeNo\": 1,\n      \"nodeType\": \"SPECIFIC_USER\",\n      \"approverRule\": {\n        \"type\": \"SPECIFIC_USER\",\n        \"userId\": 9900103\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('overtimeTemplateId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-10 Create personnel template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "templates"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_PC_WF_{{runStamp}}\",\n  \"name\": \"APIFOX Personnel Workflow {{runStamp}}\",\n  \"businessType\": \"PERSONNEL_CHANGE\",\n  \"priority\": 999,\n  \"templateVersion\": 1,\n  \"status\": \"ACTIVE\",\n  \"departmentIds\": [\n    \"{{testDepartmentId}}\"\n  ],\n  \"nodes\": [\n    {\n      \"nodeNo\": 1,\n      \"nodeType\": \"SPECIFIC_USER\",\n      \"approverRule\": {\n        \"type\": \"SPECIFIC_USER\",\n        \"userId\": 9900103\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('personnelTemplateId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-09 Get leave template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/templates/{{leaveTemplateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "templates",
+                "{{leaveTemplateId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-11 Update leave template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/templates/{{leaveTemplateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "templates",
+                "{{leaveTemplateId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Leave Workflow Updated {{runStamp}}\",\n  \"businessType\": \"LEAVE\",\n  \"priority\": 999,\n  \"status\": \"ACTIVE\",\n  \"departmentIds\": [\n    \"{{testDepartmentId}}\"\n  ],\n  \"nodes\": [\n    {\n      \"nodeNo\": 1,\n      \"nodeType\": \"SPECIFIC_USER\",\n      \"approverRule\": {\n        \"type\": \"SPECIFIC_USER\",\n        \"userId\": 9900103\n      }\n    }\n  ],\n  \"version\": \"{{leaveTemplateVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('leaveTemplateVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "30 Attendance",
+      "item": [
+        {
+          "name": "API-ATT-01 List active leave types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-types"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-02 Create leave type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-types"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APIFOX_LEAVE_{{runStamp}}\",\n  \"name\": \"APIFOX Leave {{runStamp}}\",\n  \"deductBalance\": false,\n  \"annualQuota\": 0,\n  \"minUnitHours\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('leaveTypeId', pm.response.json().data.id);",
+                  "pm.environment.set('leaveTypeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-03 Update leave type",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-types/{{leaveTypeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-types",
+                "{{leaveTypeId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Leave Updated {{runStamp}}\",\n  \"deductBalance\": false,\n  \"annualQuota\": 0,\n  \"minUnitHours\": 1,\n  \"version\": \"{{leaveTypeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('leaveTypeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-04 List all leave types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-types?includeInactive=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-types?includeInactive=true"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-05 My leave balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-balances",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-balances"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-06 Employee leave balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-balances/employees/{{employeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-balances",
+                "employees",
+                "{{employeeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-07 Adjust leave balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-balances/{{testBalanceId}}/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-balances",
+                "{{testBalanceId}}",
+                "adjust"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deltaHours\": 1,\n  \"direction\": \"INCREASE\",\n  \"reason\": \"APIFOX adjustment {{runStamp}}\",\n  \"version\": \"0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-08 Leave balance changes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-balances/{{testBalanceId}}/changes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-balances",
+                "{{testBalanceId}}",
+                "changes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-09 Create leave request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leaveTypeId\": \"{{leaveTypeId}}\",\n  \"startTime\": \"2026-08-10T01:00:00Z\",\n  \"endTime\": \"2026-08-10T03:00:00Z\",\n  \"reason\": \"APIFOX leave {{runStamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('leaveRequestId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-10 List leave requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-requests"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const row = pm.response.json().data.find(value => value.id === pm.environment.get('leaveRequestId'));",
+                  "pm.expect(row).to.exist;",
+                  "pm.environment.set('leaveRequestVersion', row.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-11 Submit leave request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-requests/{{leaveRequestId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-requests",
+                "{{leaveRequestId}}",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{leaveRequestVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-12 Cancel draft leave request state error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-requests/{{leaveRequestId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-requests",
+                "{{leaveRequestId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(409));",
+                  "pm.test('expected business code', () => pm.expect(pm.response.json().code).to.eql('STATE_CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-13 Create overtime request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/overtime-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "overtime-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"2026-08-11T01:00:00Z\",\n  \"endTime\": \"2026-08-11T03:00:00Z\",\n  \"reason\": \"APIFOX overtime {{runStamp}}\",\n  \"compensationType\": \"OVERTIME_PAY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('overtimeRequestId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-14 List overtime requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/overtime-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "overtime-requests"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const row = pm.response.json().data.find(value => value.id === pm.environment.get('overtimeRequestId'));",
+                  "pm.expect(row).to.exist;",
+                  "pm.environment.set('overtimeRequestVersion', row.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-15 Submit overtime request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/overtime-requests/{{overtimeRequestId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "overtime-requests",
+                "{{overtimeRequestId}}",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{overtimeRequestVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-16 Cancel draft overtime state error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/overtime-requests/{{overtimeRequestId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "overtime-requests",
+                "{{overtimeRequestId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(409));",
+                  "pm.test('expected business code', () => pm.expect(pm.response.json().code).to.eql('STATE_CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-17 Create work calendar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-calendars",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-calendars"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calendarYear\": 2031,\n  \"name\": \"APIFOX Calendar {{runStamp}}\",\n  \"timeZone\": \"Asia/Shanghai\",\n  \"status\": \"ACTIVE\",\n  \"days\": [\n    {\n      \"workDate\": \"2031-01-02\",\n      \"workday\": true,\n      \"workHours\": 8,\n      \"holidayName\": null\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('calendarId', pm.response.json().data.id);",
+                  "pm.environment.set('calendarVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-18 Get work calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-calendars?year=2031",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-calendars?year=2031"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-19 Update work calendar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-calendars/{{calendarId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-calendars",
+                "{{calendarId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"APIFOX Calendar Updated {{runStamp}}\",\n  \"timeZone\": \"Asia/Shanghai\",\n  \"status\": \"ACTIVE\",\n  \"days\": [\n    {\n      \"workDate\": \"2031-01-02\",\n      \"workday\": false,\n      \"workHours\": 0,\n      \"holidayName\": \"APIFOX holiday\"\n    }\n  ],\n  \"version\": \"{{calendarVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-20 Rebuild monthly summary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/monthly-summaries/rebuild",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attendance",
+                "monthly-summaries",
+                "rebuild"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"month\": \"2026-08\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-21 List monthly summaries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/monthly-summaries?month=2026-08&departmentId={{testDepartmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attendance",
+                "monthly-summaries?month=2026-08&departmentId={{testDepartmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-ATT-22 Disable leave type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendanceAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leave-types/{{leaveTypeId}}/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leave-types",
+                "{{leaveTypeId}}",
+                "disable"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{leaveTypeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "40 Personnel Changes and Handover",
+      "item": [
+        {
+          "name": "API-PER-01 List personnel changes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes?page=1&pageSize=20"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-02 Create onboarding change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": null,\n  \"changeType\": \"ONBOARD\",\n  \"effectiveDate\": \"2099-12-31\",\n  \"reason\": \"APIFOX onboarding {{runStamp}}\",\n  \"afterAssignment\": {\n    \"employeeNo\": \"APIFOX_ONBOARD_{{runStamp}}\",\n    \"name\": \"APIFOX Onboard {{runStamp}}\",\n    \"gender\": \"FEMALE\",\n    \"departmentId\": \"{{testDepartmentId}}\",\n    \"positionId\": \"{{testPositionId}}\",\n    \"rankId\": \"{{testRankId}}\",\n    \"managerEmployeeId\": \"{{managerEmployeeId}}\",\n    \"employmentStatus\": \"PROBATION\",\n    \"hireDate\": \"2099-12-31\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('personnelChangeId', pm.response.json().data.id);",
+                  "pm.environment.set('personnelChangeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-03 Get personnel change",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{personnelChangeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{personnelChangeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-04 Update personnel change",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{personnelChangeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{personnelChangeId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": null,\n  \"changeType\": \"ONBOARD\",\n  \"effectiveDate\": \"2099-12-31\",\n  \"reason\": \"APIFOX onboarding updated {{runStamp}}\",\n  \"afterAssignment\": {\n    \"employeeNo\": \"APIFOX_ONBOARD_{{runStamp}}\",\n    \"name\": \"APIFOX Onboard Updated {{runStamp}}\",\n    \"gender\": \"FEMALE\",\n    \"departmentId\": \"{{testDepartmentId}}\",\n    \"positionId\": \"{{testPositionId}}\",\n    \"rankId\": \"{{testRankId}}\",\n    \"managerEmployeeId\": \"{{managerEmployeeId}}\",\n    \"employmentStatus\": \"PROBATION\",\n    \"hireDate\": \"2099-12-31\"\n  },\n  \"version\": \"{{personnelChangeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('personnelChangeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-05 Submit onboarding change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{personnelChangeId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{personnelChangeId}}",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{personnelChangeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-06 Create termination change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"changeType\": \"TERMINATION\",\n  \"effectiveDate\": \"2099-12-31\",\n  \"reason\": \"APIFOX handover {{runStamp}}\",\n  \"afterAssignment\": {\n    \"employmentStatus\": \"TERMINATED\",\n    \"terminationDate\": \"2099-12-31\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('terminationChangeId', pm.response.json().data.id);",
+                  "pm.environment.set('terminationChangeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-07 Add exit handover item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{terminationChangeId}}/handover-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{terminationChangeId}}",
+                "handover-items"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemType\": \"ASSET\",\n  \"receiverEmployeeId\": \"{{hrEmployeeId}}\",\n  \"required\": true,\n  \"remark\": \"APIFOX asset handover\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const item = pm.response.json().data.handoverItems[0];",
+                  "pm.environment.set('handoverItemId', item.id);",
+                  "pm.environment.set('handoverItemVersion', item.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-08 Confirm exit handover item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{terminationChangeId}}/handover-items/{{handoverItemId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{terminationChangeId}}",
+                "handover-items",
+                "{{handoverItemId}}",
+                "confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{handoverItemVersion}}\",\n  \"remark\": \"APIFOX confirmed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-09 Submit termination change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{terminationChangeId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{terminationChangeId}}",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{terminationChangeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('terminationChangeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-10 Withdraw termination change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{terminationChangeId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{terminationChangeId}}",
+                "withdraw"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{terminationChangeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-05 Create workflow withdrawal change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"changeType\": \"CONFIRM\",\n  \"effectiveDate\": \"2099-12-31\",\n  \"reason\": \"APIFOX workflow withdrawal {{runStamp}}\",\n  \"afterAssignment\": {\n    \"employmentStatus\": \"FORMAL\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('workflowWithdrawChangeId', pm.response.json().data.id);",
+                  "pm.environment.set('workflowWithdrawChangeVersion', pm.response.json().data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-PER-05 Submit workflow withdrawal change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{workflowWithdrawChangeId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{workflowWithdrawChangeId}}",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{workflowWithdrawChangeVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "50 Workflow Tasks and Completion",
+      "item": [
+        {
+          "name": "API-WF-01 List manager pending tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const tasks = pm.response.json().data;",
+                  "const personnel = tasks.find(task => task.businessType === 'PERSONNEL_CHANGE' && task.businessId === pm.environment.get('personnelChangeId'));",
+                  "const withdrawal = tasks.find(task => task.businessType === 'PERSONNEL_CHANGE' && task.businessId === pm.environment.get('workflowWithdrawChangeId'));",
+                  "const leave = tasks.find(task => task.businessType === 'LEAVE' && task.businessId === pm.environment.get('leaveRequestId'));",
+                  "const overtime = tasks.find(task => task.businessType === 'OVERTIME' && task.businessId === pm.environment.get('overtimeRequestId'));",
+                  "pm.expect(personnel).to.exist; pm.expect(withdrawal).to.exist; pm.expect(leave).to.exist; pm.expect(overtime).to.exist;",
+                  "pm.environment.set('personnelTaskId', personnel.id); pm.environment.set('personnelWorkflowInstanceId', personnel.instanceId); pm.environment.set('workflowWithdrawInstanceId', withdrawal.instanceId);",
+                  "pm.environment.set('leaveTaskId', leave.id); pm.environment.set('leaveTaskVersion', leave.version.toString()); pm.environment.set('leaveWorkflowInstanceId', leave.instanceId);",
+                  "pm.environment.set('overtimeTaskId', overtime.id); pm.environment.set('overtimeTaskVersion', overtime.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-02 Get personnel workflow instance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/instances/{{personnelWorkflowInstanceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "instances",
+                "{{personnelWorkflowInstanceId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-03 Transfer leave task to api-admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{workflowAdminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/{{leaveTaskId}}/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "{{leaveTaskId}}",
+                "transfer"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{leaveTaskVersion}}\",\n  \"transferToUserId\": 9900101,\n  \"comment\": \"APIFOX transfer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-04 List admin pending tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const task = pm.response.json().data.find(value => value.businessType === 'LEAVE' && value.businessId === pm.environment.get('leaveRequestId'));",
+                  "pm.expect(task).to.exist; pm.environment.set('leaveTaskId', task.id); pm.environment.set('leaveTaskVersion', task.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-05 Approve transferred leave task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/{{leaveTaskId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "{{leaveTaskId}}",
+                "approve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{leaveTaskVersion}}\",\n  \"comment\": \"APIFOX approved leave\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-06 Return overtime task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/{{overtimeTaskId}}/return",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "{{overtimeTaskId}}",
+                "return"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{overtimeTaskVersion}}\",\n  \"comment\": \"APIFOX return overtime\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-07 Withdraw personnel workflow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hrAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/instances/{{workflowWithdrawInstanceId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "instances",
+                "{{workflowWithdrawInstanceId}}",
+                "withdraw"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 0,\n  \"comment\": \"APIFOX withdraw workflow\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-07 Withdraw personnel workflow denied for readonly user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{readonlyAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/instances/{{personnelWorkflowInstanceId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "instances",
+                "{{personnelWorkflowInstanceId}}",
+                "withdraw"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 0,\n  \"comment\": \"APIFOX denied\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(422));",
+                  "pm.test('expected business code', () => pm.expect(pm.response.json().code).to.eql('WORKFLOW_TASK_INVALID'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-07 Personnel effective date not reached",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/personnel-changes/{{personnelChangeId}}/effective",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "personnel-changes",
+                "{{personnelChangeId}}",
+                "effective"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status', () => pm.response.to.have.status(409));",
+                  "pm.test('expected business code', () => pm.expect(pm.response.json().code).to.eql('STATE_CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-08 Approve personnel change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/{{personnelTaskId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "{{personnelTaskId}}",
+                "approve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 0,\n  \"comment\": \"APIFOX approve personnel\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-06 Reload returned overtime request",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/overtime-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "overtime-requests"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const row = pm.response.json().data.find(value => value.id === pm.environment.get('overtimeRequestId'));",
+                  "pm.expect(row).to.exist; pm.environment.set('overtimeRequestVersion', row.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-06 Resubmit returned overtime request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/overtime-requests/{{overtimeRequestId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "overtime-requests",
+                "{{overtimeRequestId}}",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{overtimeRequestVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-01 Reload overtime approval task",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const task = pm.response.json().data.find(value => value.businessType === 'OVERTIME' && value.businessId === pm.environment.get('overtimeRequestId'));",
+                  "pm.expect(task).to.exist; pm.environment.set('overtimeTaskId', task.id); pm.environment.set('overtimeTaskVersion', task.version.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-WF-05 Reject overtime task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workflow/tasks/{{overtimeTaskId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workflow",
+                "tasks",
+                "{{overtimeTaskId}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"{{overtimeTaskVersion}}\",\n  \"comment\": \"APIFOX reject overtime\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "60 System and Reports",
+      "item": [
+        {
+          "name": "API-SYS-01 List roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/system/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "system",
+                "roles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-SYS-02 List users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/system/users?page=1&pageSize=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "system",
+                "users?page=1&pageSize=100"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const user = pm.response.json().data.records.find(value => value.id === '9900107');",
+                  "pm.expect(user).to.exist; pm.environment.set('readonlyUserVersion', user.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-SYS-03 Update readonly user roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/system/users/9900107/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "system",
+                "users",
+                "9900107",
+                "roles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleIds\": [\n    \"9000052\"\n  ],\n  \"version\": \"{{readonlyUserVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-REPORT-01 Headcount by department",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/headcount-by-department",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "headcount-by-department"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-AUTH-03 Logout admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

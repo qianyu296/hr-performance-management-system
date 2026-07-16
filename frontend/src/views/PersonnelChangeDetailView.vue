@@ -18,7 +18,7 @@ import {
   withdrawPersonnelChange,
 } from '@/api/personnel'
 import type { DepartmentNode, EmployeeOption, Position, Rank } from '@/types/organization'
-import type { CreateExitHandoverItemPayload, PersonnelChangeDetail } from '@/types/personnel'
+import type { CreateExitHandoverItemPayload, PersonnelChangeDetail, PersonnelChangeEditorPayload, UpdatePersonnelChangePayload } from '@/types/personnel'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,8 +32,9 @@ const loading = ref(false)
 const saving = ref(false)
 const editorOpen = ref(false)
 
-function errorMessage(error: any) {
-  return error?.response?.data?.message || '请求失败，请稍后重试'
+function errorMessage(error: unknown) {
+  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof message === 'string' ? message : '请求失败，请稍后重试'
 }
 
 function flattenDepartments(nodes: DepartmentNode[]): DepartmentNode[] {
@@ -112,11 +113,11 @@ async function effectiveChange() {
   }
 }
 
-async function saveDraft(payload: any) {
+async function saveDraft(payload: PersonnelChangeEditorPayload | UpdatePersonnelChangePayload) {
   if (!detail.value) return
   saving.value = true
   try {
-    detail.value = await updatePersonnelChange(detail.value.id, payload)
+    detail.value = await updatePersonnelChange(detail.value.id, payload as UpdatePersonnelChangePayload)
     editorOpen.value = false
     ElMessage.success('异动草稿已更新')
   } catch (error) {
@@ -172,7 +173,7 @@ onMounted(async () => {
       <el-button v-if="detail?.canEdit" @click="editorOpen = true">编辑草稿</el-button>
       <el-button v-if="detail?.canSubmit" type="primary" :loading="saving" @click="submitChange">提交审批</el-button>
       <el-button v-if="detail?.canWithdraw" type="warning" :loading="saving" @click="withdrawChange">撤回</el-button>
-      <el-button v-if="detail?.status === 'APPROVED'" type="success" :loading="saving" @click="effectiveChange">执行生效</el-button>
+      <el-button v-if="detail?.canExecute" type="success" :loading="saving" @click="effectiveChange">执行生效</el-button>
     </template>
     <template v-if="detail">
       <div class="metric-grid">

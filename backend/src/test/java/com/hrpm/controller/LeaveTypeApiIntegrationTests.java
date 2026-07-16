@@ -95,7 +95,7 @@ class LeaveTypeApiIntegrationTests {
 
     @Test
     void hrCanDisableLeaveType() throws Exception {
-        jdbcTemplate.update("INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, status) VALUES (98009, 'HR_ANNUAL', 'HR Annual Leave', 1, 1.00, 'ACTIVE')");
+        jdbcTemplate.update("INSERT INTO att_leave_type (id, code, name, deduct_balance, min_unit_hours, annual_quota, status) VALUES (98009, 'HR_ANNUAL', 'HR Annual Leave', 1, 1.00, 80.00, 'ACTIVE')");
 
         mockMvc.perform(post("/leave-types/98009/disable")
                         .header("Authorization", "Bearer " + tokenService.issue(HR_USER_ID, "leave-type-hr", 0))

@@ -94,7 +94,7 @@ async function confirmItem(item: ExitHandoverItem) {
       <el-table-column prop="remark" label="备注" min-width="220" />
       <el-table-column label="操作" width="120" fixed="right">
         <template #default="scope">
-          <el-button v-if="scope.row.status === 'PENDING'" link type="primary" :loading="saving" @click="confirmItem(scope.row)">确认</el-button>
+          <el-button v-if="scope.row.canConfirm" link type="primary" :loading="saving" @click="confirmItem(scope.row)">确认</el-button>
           <span v-else class="handover-meta">{{ employeeName(scope.row.confirmedBy) }}</span>
         </template>
       </el-table-column>
