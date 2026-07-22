@@ -1672,7 +1672,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"APIFOX_LEAVE_{{runStamp}}\",\n  \"name\": \"APIFOX Leave {{runStamp}}\",\n  \"deductBalance\": false,\n  \"annualQuota\": 0,\n  \"minUnitHours\": 1\n}",
+              "raw": "{\n  \"code\": \"APIFOX_LEAVE_{{runStamp}}\",\n  \"name\": \"APIFOX Leave {{runStamp}}\",\n  \"deductBalance\": false,\n  \"annualQuota\": null,\n  \"minUnitHours\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1721,7 +1721,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"APIFOX Leave Updated {{runStamp}}\",\n  \"deductBalance\": false,\n  \"annualQuota\": 0,\n  \"minUnitHours\": 1,\n  \"version\": \"{{leaveTypeVersion}}\"\n}",
+              "raw": "{\n  \"name\": \"APIFOX Leave Updated {{runStamp}}\",\n  \"deductBalance\": false,\n  \"annualQuota\": null,\n  \"minUnitHours\": 1,\n  \"version\": \"{{leaveTypeVersion}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1838,7 +1838,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "const row = pm.response.json().data.find(value => String(value.id) === pm.environment.get('testBalanceId'));",
+                  "pm.expect(row).to.exist;",
+                  "pm.environment.set('testBalanceVersion', row.version.toString());"
                 ]
               }
             }
@@ -1871,7 +1874,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"deltaHours\": 1,\n  \"direction\": \"INCREASE\",\n  \"reason\": \"APIFOX adjustment {{runStamp}}\",\n  \"version\": \"0\"\n}",
+              "raw": "{\n  \"deltaHours\": 1,\n  \"direction\": \"INCREASE\",\n  \"reason\": \"APIFOX adjustment {{runStamp}}\",\n  \"version\": \"{{testBalanceVersion}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1952,7 +1955,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"leaveTypeId\": \"{{leaveTypeId}}\",\n  \"startTime\": \"2026-08-10T01:00:00Z\",\n  \"endTime\": \"2026-08-10T03:00:00Z\",\n  \"reason\": \"APIFOX leave {{runStamp}}\"\n}",
+              "raw": "{\n  \"leaveTypeId\": \"{{leaveTypeId}}\",\n  \"startTime\": \"{{leaveRequestDate}}T09:00:00Z\",\n  \"endTime\": \"{{leaveRequestDate}}T11:00:00Z\",\n  \"reason\": \"APIFOX leave {{runStamp}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1961,6 +1964,16 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const day = 10 + (Number(Date.now().toString().slice(-3)) % 10);",
+                  "pm.environment.set('leaveRequestDate', `2026-08-${day.toString().padStart(2, '0')}`);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -2131,7 +2144,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"startTime\": \"2026-08-11T01:00:00Z\",\n  \"endTime\": \"2026-08-11T03:00:00Z\",\n  \"reason\": \"APIFOX overtime {{runStamp}}\",\n  \"compensationType\": \"OVERTIME_PAY\"\n}",
+              "raw": "{\n  \"startTime\": \"{{overtimeRequestDate}}T01:00:00Z\",\n  \"endTime\": \"{{overtimeRequestDate}}T03:00:00Z\",\n  \"reason\": \"APIFOX overtime {{runStamp}}\",\n  \"compensationType\": \"OVERTIME_PAY\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2140,6 +2153,16 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const day = 20 + (Number(Date.now().toString().slice(-3)) % 8);",
+                  "pm.environment.set('overtimeRequestDate', `2026-08-${day.toString().padStart(2, '0')}`);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -2310,7 +2333,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"calendarYear\": 2031,\n  \"name\": \"APIFOX Calendar {{runStamp}}\",\n  \"timeZone\": \"Asia/Shanghai\",\n  \"status\": \"ACTIVE\",\n  \"days\": [\n    {\n      \"workDate\": \"2031-01-02\",\n      \"workday\": true,\n      \"workHours\": 8,\n      \"holidayName\": null\n    }\n  ]\n}",
+              "raw": "{\n  \"calendarYear\": \"{{calendarYear}}\",\n  \"name\": \"APIFOX Calendar {{runStamp}}\",\n  \"timeZone\": \"Asia/Shanghai\",\n  \"status\": \"ACTIVE\",\n  \"days\": [\n    {\n      \"workDate\": \"{{calendarYear}}-01-02\",\n      \"workday\": true,\n      \"workHours\": 8,\n      \"holidayName\": null\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2319,6 +2342,16 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const year = 2031 + (Number(Date.now().toString().slice(-2)) % 50);",
+                  "pm.environment.set('calendarYear', year.toString());"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -2344,12 +2377,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-calendars?year=2031",
+              "raw": "{{baseUrl}}/work-calendars?year={{calendarYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "work-calendars?year=2031"
+                "work-calendars?year={{calendarYear}}"
               ]
             }
           },
@@ -2392,7 +2425,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"APIFOX Calendar Updated {{runStamp}}\",\n  \"timeZone\": \"Asia/Shanghai\",\n  \"status\": \"ACTIVE\",\n  \"days\": [\n    {\n      \"workDate\": \"2031-01-02\",\n      \"workday\": false,\n      \"workHours\": 0,\n      \"holidayName\": \"APIFOX holiday\"\n    }\n  ],\n  \"version\": \"{{calendarVersion}}\"\n}",
+              "raw": "{\n  \"name\": \"APIFOX Calendar Updated {{runStamp}}\",\n  \"timeZone\": \"Asia/Shanghai\",\n  \"status\": \"ACTIVE\",\n  \"days\": [\n    {\n      \"workDate\": \"{{calendarYear}}-01-02\",\n      \"workday\": false,\n      \"workHours\": 0,\n      \"holidayName\": \"APIFOX holiday\"\n    }\n  ],\n  \"version\": \"{{calendarVersion}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2753,7 +2786,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));"
+                  "pm.test('business success', () => pm.expect(pm.response.json().code).to.eql('SUCCESS'));",
+                  "pm.environment.set('personnelChangeVersion', pm.response.json().data.version.toString());"
                 ]
               }
             }
@@ -3495,7 +3529,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"version\": \"1\"\n}",
+              "raw": "{\n  \"version\": \"{{personnelChangeVersion}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

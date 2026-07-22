@@ -2,6 +2,6 @@ package com.hrpm.common.exception;
 
 public class VersionConflictException extends RuntimeException {
     public VersionConflictException() {
-        super("The resource has changed. Refresh and try again.");
+        super("资源已发生变更，请刷新后重试");
     }
 }

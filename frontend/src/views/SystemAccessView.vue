@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, type CheckboxValueType } from 'element-plus'
 import { Edit, Refresh } from '@element-plus/icons-vue'
@@ -67,7 +67,7 @@ onMounted(loadData)
 </script>
 
 <template>
-  <PageFrame title="系统管理" description="管理用户角色。保存后，被调整用户需要重新登录。">
+  <PageFrame title="系统设置" description="管理用户角色。保存后，被调整用户需要重新登录。">
     <template #actions>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
     </template>

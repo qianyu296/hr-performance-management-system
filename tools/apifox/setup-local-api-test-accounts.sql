@@ -4,10 +4,39 @@ START TRANSACTION;
 
 SET @password_hash = '$2a$10$sdmbAyd9lCq37Nzkg7IzV.JzLLzkGUB.il9OfqiEB6GB7sLkogrbC';
 
--- The calendar API requires a unique year. Remove only this suite's prior calendar before recreating it.
+-- Clear prior APIFOX workflow templates so each run resolves a single deterministic template.
+DELETE FROM wf_template_node
+WHERE template_id IN (SELECT id FROM wf_template WHERE code LIKE 'APIFOX\_%');
+DELETE FROM wf_template_scope
+WHERE template_id IN (SELECT id FROM wf_template WHERE code LIKE 'APIFOX\_%');
+DELETE FROM wf_template
+WHERE code LIKE 'APIFOX\_%';
+
+-- Remove prior APIFOX leave types and calendars created by the suite.
+DELETE FROM att_leave_type WHERE code LIKE 'APIFOX\_%';
 DELETE FROM att_work_calendar_day
-WHERE calendar_id IN (SELECT id FROM att_work_calendar AS calendar WHERE calendar.calendar_year = 2031 AND calendar.name LIKE 'APIFOX%');
-DELETE FROM att_work_calendar WHERE calendar_year = 2031 AND name LIKE 'APIFOX%';
+WHERE calendar_id IN (SELECT id FROM att_work_calendar AS calendar WHERE calendar.name LIKE 'APIFOX%');
+DELETE FROM att_work_calendar WHERE name LIKE 'APIFOX%';
+
+-- Clear prior leave/overtime workflow data for the dedicated test employee to avoid overlap and stale tasks.
+DELETE log FROM wf_action_log log
+JOIN wf_instance instance_row ON instance_row.id = log.instance_id
+LEFT JOIN att_leave_request leave_request ON instance_row.business_type = 'LEAVE' AND leave_request.id = instance_row.business_id
+LEFT JOIN att_overtime_request overtime_request ON instance_row.business_type = 'OVERTIME' AND overtime_request.id = instance_row.business_id
+WHERE leave_request.employee_id = 9900012 OR overtime_request.employee_id = 9900012;
+
+DELETE task FROM wf_task task
+JOIN wf_instance instance_row ON instance_row.id = task.instance_id
+LEFT JOIN att_leave_request leave_request ON instance_row.business_type = 'LEAVE' AND leave_request.id = instance_row.business_id
+LEFT JOIN att_overtime_request overtime_request ON instance_row.business_type = 'OVERTIME' AND overtime_request.id = instance_row.business_id
+WHERE leave_request.employee_id = 9900012 OR overtime_request.employee_id = 9900012;
+
+DELETE FROM wf_instance
+WHERE (business_type = 'LEAVE' AND business_id IN (SELECT id FROM att_leave_request WHERE employee_id = 9900012))
+   OR (business_type = 'OVERTIME' AND business_id IN (SELECT id FROM att_overtime_request WHERE employee_id = 9900012));
+
+DELETE FROM att_leave_request WHERE employee_id = 9900012;
+DELETE FROM att_overtime_request WHERE employee_id = 9900012;
 
 INSERT INTO hr_department (id, code, name, parent_id, leader_employee_id, path, sort_no, effective_date, status, deleted)
 VALUES (9900001, 'APIFOX_ROOT', 'Apifox Test Department', NULL, 9900011, '/9900001/', 990, '2026-01-01', 'ACTIVE', 0)

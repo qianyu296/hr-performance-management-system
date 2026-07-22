@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
@@ -46,17 +46,18 @@ function statusLabel(status: string) {
 }
 
 function submitErrorMessage(error: any) {
+  const code = error?.response?.data?.code
   const message = error?.response?.data?.message
-  if (message === 'Leave request overlaps an existing request') {
+  if (code === 'LEAVE_REQUEST_OVERLAP' || message === '请假时间与已有审批中或已通过的请假申请重叠') {
     return '请假时间与已有审批中或已通过的请假申请重叠，请调整时间后重试'
   }
-  if (message === 'Leave balance is insufficient') {
+  if (code === 'LEAVE_BALANCE_INSUFFICIENT' || message === '可用请假余额不足') {
     return '可用请假余额不足，请联系 HR 调整余额或缩短请假时长'
   }
-  if (message === 'Workflow task is invalid') {
+  if (code === 'WORKFLOW_TASK_INVALID' || message === '工作流任务无效') {
     return '请假审批流程未能找到有效审批人，请联系 HR 检查流程节点配置'
   }
-  if (message === 'No matching workflow template is available') {
+  if (code === 'WORKFLOW_TEMPLATE_MISSING' || message === '未找到匹配的审批流程模板') {
     return '未配置适用的请假审批流程，请联系 HR 配置流程模板'
   }
   return '请假提交失败，请稍后重试或联系 HR 确认请假规则与审批流程'
@@ -188,3 +189,4 @@ onMounted(loadData)
     </el-dialog>
   </PageFrame>
 </template>
+

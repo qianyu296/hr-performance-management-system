@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { changePassword, fetchCurrentUser, fetchCurrentUserPermissions, login, logout, type CurrentUser, type LoginPayload, type LoginResult } from '@/api/auth'
 
@@ -52,8 +52,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function can(permission?: string) {
-    return !permission || permissions.value.includes(permission)
+  function can(permission?: string | string[]) {
+    if (!permission) return true
+    if (Array.isArray(permission)) return permission.some((item) => permissions.value.includes(item))
+    return permissions.value.includes(permission)
   }
 
   function clearSession() {
