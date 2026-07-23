@@ -1,26 +1,23 @@
 package com.hrpm.service;
 
-
-import com.hrpm.common.exception.WorkflowTaskInvalidException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrpm.common.IdGenerator;
+import com.hrpm.common.exception.ResourceNotFoundException;
+import com.hrpm.common.exception.WorkflowTaskInvalidException;
 import com.hrpm.entity.WorkflowBusinessContext;
 import com.hrpm.entity.WorkflowInstance;
-import com.hrpm.entity.WorkflowActionLogRow;
-import com.hrpm.entity.WorkflowTask;
-import com.hrpm.entity.WorkflowTaskListRow;
 import com.hrpm.entity.WorkflowInstanceSnapshot;
 import com.hrpm.entity.WorkflowNodeSnapshot;
+import com.hrpm.entity.WorkflowTask;
+import com.hrpm.entity.WorkflowTaskListRow;
 import com.hrpm.mapper.WorkflowMapper;
-import com.hrpm.vo.WorkflowTaskListVO;
 import com.hrpm.vo.WorkflowActionLogVO;
 import com.hrpm.vo.WorkflowInstanceDetailVO;
-import com.hrpm.common.exception.ResourceNotFoundException;
-
+import com.hrpm.vo.WorkflowTaskListVO;
 import java.util.List;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class WorkflowTaskService {
@@ -40,11 +37,8 @@ public class WorkflowTaskService {
 
     @Transactional
     public String approve(long userId, long taskId, int version, String comment) {
-        WorkflowTask task = workflowMapper.findTask(taskId);
-        if (task == null || task.assigneeUserId() != userId || !"PENDING".equals(task.status())) {
-            throw new WorkflowTaskInvalidException();
-        }
-        if (task.version() != version || workflowMapper.approveTask(taskId, userId, version) != 1) {
+        WorkflowTask task = requirePendingTask(userId, taskId);
+        if (task.version() != version || workflowMapper.approveTask(taskId, task.assigneeUserId(), version) != 1) {
             throw new IllegalStateException("Workflow task changed before approval");
         }
         WorkflowNodeSnapshot nextNode = nextNode(task.instanceId(), task.nodeNo());
@@ -56,7 +50,7 @@ public class WorkflowTaskService {
             workflowMapper.insertActionLog(idGenerator.nextId(), task.instanceId(), taskId, userId, "APPROVE", comment);
             return "IN_PROGRESS";
         }
-        handlerRegistry.require(task.businessType()).approve(context(task));
+        handlerRegistry.require(task.businessType()).approve(context(task, userId));
         if (workflowMapper.approveInstance(task.instanceId()) != 1) {
             throw new IllegalStateException("Workflow instance changed before approval");
         }
@@ -65,28 +59,23 @@ public class WorkflowTaskService {
     }
 
     public List<WorkflowTaskListVO> listPending(long userId) {
-        return workflowMapper.listPendingTasks(userId).stream().map(WorkflowTaskListRow::toItem).toList();
+        List<WorkflowTaskListRow> rows = workflowMapper.listPendingTasks(userId);
+        return rows.stream().map(WorkflowTaskListRow::toItem).toList();
     }
 
-    public WorkflowInstanceDetailVO detail(long userId, long instanceId) {
-        WorkflowInstance instance = workflowMapper.findInstance(instanceId);
-        if (instance == null || workflowMapper.countInstanceAccess(instanceId, userId) == 0) {
-            throw new ResourceNotFoundException("Workflow instance not found");
-        }
-        List<WorkflowActionLogVO> history = workflowMapper.listActionLogs(instanceId).stream().map(WorkflowActionLogVO::from).toList();
+    public WorkflowInstanceDetailVO detail(long userId, long id) {
+        WorkflowInstance instance = resolveAccessibleInstance(userId, id);
+        List<WorkflowActionLogVO> history = workflowMapper.listActionLogs(instance.id()).stream().map(WorkflowActionLogVO::from).toList();
         return WorkflowInstanceDetailVO.from(instance, history);
     }
 
     @Transactional
     public String reject(long userId, long taskId, int version, String comment) {
-        WorkflowTask task = workflowMapper.findTask(taskId);
-        if (task == null || task.assigneeUserId() != userId || !"PENDING".equals(task.status())) {
-            throw new WorkflowTaskInvalidException();
-        }
-        if (task.version() != version || workflowMapper.rejectTask(taskId, userId, version) != 1) {
+        WorkflowTask task = requirePendingTask(userId, taskId);
+        if (task.version() != version || workflowMapper.rejectTask(taskId, task.assigneeUserId(), version) != 1) {
             throw new IllegalStateException("Workflow task changed before rejection");
         }
-        handlerRegistry.require(task.businessType()).reject(context(task));
+        handlerRegistry.require(task.businessType()).reject(context(task, userId));
         if (workflowMapper.rejectInstance(task.instanceId()) != 1) {
             throw new IllegalStateException("Workflow instance changed before rejection");
         }
@@ -96,11 +85,11 @@ public class WorkflowTaskService {
 
     @Transactional
     public String returnToInitiator(long userId, long taskId, int version, String comment) {
-        WorkflowTask task = requireOwnedPendingTask(userId, taskId);
-        if (task.version() != version || workflowMapper.returnTask(taskId, userId, version) != 1) {
+        WorkflowTask task = requirePendingTask(userId, taskId);
+        if (task.version() != version || workflowMapper.returnTask(taskId, task.assigneeUserId(), version) != 1) {
             throw new IllegalStateException("Workflow task changed before return");
         }
-        handlerRegistry.require(task.businessType()).returnToDraft(context(task));
+        handlerRegistry.require(task.businessType()).returnToDraft(context(task, userId));
         if (workflowMapper.returnInstance(task.instanceId()) != 1) {
             throw new IllegalStateException("Workflow instance changed before return");
         }
@@ -135,7 +124,8 @@ public class WorkflowTaskService {
         if (workflowMapper.withdrawPendingTasks(instanceId) != 1) {
             throw new IllegalStateException("Workflow task changed before withdrawal");
         }
-        handlerRegistry.require(instance.businessType()).withdraw(new WorkflowBusinessContext(instance.id(), instance.businessType(), instance.businessId(), userId));
+        handlerRegistry.require(instance.businessType())
+                .withdraw(new WorkflowBusinessContext(instance.id(), instance.businessType(), instance.businessId(), userId));
         if (workflowMapper.withdrawInstance(instanceId, userId, version) != 1) {
             throw new IllegalStateException("Workflow instance changed before withdrawal");
         }
@@ -156,12 +146,30 @@ public class WorkflowTaskService {
         }
     }
 
-    private WorkflowTask requireOwnedPendingTask(long userId, long taskId) {
+    private WorkflowTask requirePendingTask(long userId, long taskId) {
         WorkflowTask task = workflowMapper.findTask(taskId);
-        if (task == null || task.assigneeUserId() != userId || !"PENDING".equals(task.status())) {
+        if (task == null || !"PENDING".equals(task.status()) || !canOperateTask(userId, task)) {
             throw new WorkflowTaskInvalidException();
         }
         return task;
+    }
+
+    private boolean canOperateTask(long userId, WorkflowTask task) {
+        return task.assigneeUserId() == userId;
+    }
+
+    private WorkflowInstance resolveAccessibleInstance(long userId, long id) {
+        WorkflowInstance instance = workflowMapper.findInstance(id);
+        if (instance == null) {
+            WorkflowTask task = workflowMapper.findTask(id);
+            if (task != null) {
+                instance = workflowMapper.findInstance(task.instanceId());
+            }
+        }
+        if (instance == null || workflowMapper.countInstanceAccess(instance.id(), userId) == 0) {
+            throw new ResourceNotFoundException("Workflow instance not found");
+        }
+        return instance;
     }
 
     private WorkflowNodeSnapshot taskSnapshot(String value) {
@@ -180,7 +188,7 @@ public class WorkflowTaskService {
         }
     }
 
-    private WorkflowBusinessContext context(WorkflowTask task) {
-        return new WorkflowBusinessContext(task.instanceId(), task.businessType(), task.businessId(), task.assigneeUserId());
+    private WorkflowBusinessContext context(WorkflowTask task, long actorUserId) {
+        return new WorkflowBusinessContext(task.instanceId(), task.businessType(), task.businessId(), actorUserId);
     }
 }

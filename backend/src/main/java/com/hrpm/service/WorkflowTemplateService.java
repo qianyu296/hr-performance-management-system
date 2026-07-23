@@ -25,6 +25,7 @@ public class WorkflowTemplateService {
     private static final Set<String> BUSINESS_TYPES = Set.of("LEAVE", "OVERTIME", "PERSONNEL_CHANGE", "PERFORMANCE_APPEAL");
     private static final Set<String> NODE_TYPES = Set.of("SPECIFIC_USER", "DIRECT_MANAGER", "DEPARTMENT_LEADER", "HR");
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE");
+    private static final String HR_ROLE_CODE = "HR_SPECIALIST";
 
     private final WorkflowMapper workflowMapper;
     private final IdGenerator idGenerator;
@@ -131,13 +132,31 @@ public class WorkflowTemplateService {
         if (!configuredType.equals(node.nodeType())) {
             throw new OrganizationReferenceInvalidException("Approver rule type must match the workflow node type");
         }
-        if (!"SPECIFIC_USER".equals(node.nodeType())) {
+        if ("SPECIFIC_USER".equals(node.nodeType())) {
+            JsonNode userId = node.approverRule().get("userId");
+            if (userId == null || !userId.canConvertToLong() || workflowMapper.findActiveUserId(userId.longValue()) == null) {
+                throw new OrganizationReferenceInvalidException("Specific approver user is missing or inactive");
+            }
             return;
         }
-        JsonNode userId = node.approverRule().get("userId");
-        if (userId == null || !userId.canConvertToLong() || workflowMapper.findActiveUserId(userId.longValue()) == null) {
-            throw new OrganizationReferenceInvalidException("Specific approver user is missing or inactive");
+        if (!"HR".equals(node.nodeType())) {
+            return;
         }
+        String roleCode = normalizeHrRoleCode(node.approverRule().path("roleCode").asText(HR_ROLE_CODE));
+        if (workflowMapper.findActiveUserIdsByRoleCode(roleCode).isEmpty()) {
+            throw new OrganizationReferenceInvalidException("HR approver role is missing or has no active users");
+        }
+    }
+
+    private String normalizeHrRoleCode(String value) {
+        if (value == null) {
+            return HR_ROLE_CODE;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "HR".equals(trimmed)) {
+            return HR_ROLE_CODE;
+        }
+        return trimmed;
     }
 
     private int parseVersion(String value) {

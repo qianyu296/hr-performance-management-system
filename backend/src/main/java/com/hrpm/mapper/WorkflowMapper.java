@@ -182,6 +182,14 @@ public interface WorkflowMapper {
     Long findActiveUserId(@Param("id") long id);
 
     @Select("""
+            SELECT COUNT(*)
+            FROM sys_user_role ur
+            JOIN sys_role r ON r.id = ur.role_id AND r.status = 'ACTIVE' AND r.deleted = 0
+            WHERE ur.user_id = #{userId} AND ur.deleted = 0 AND r.code = #{roleCode}
+            """)
+    int countActiveRoleCode(@Param("userId") long userId, @Param("roleCode") String roleCode);
+
+    @Select("""
             SELECT u.id
             FROM hr_employee applicant
             JOIN hr_employee manager ON manager.id = applicant.manager_employee_id
@@ -190,6 +198,15 @@ public interface WorkflowMapper {
             WHERE applicant.id = #{employeeId} AND applicant.deleted = 0
             """)
     Long findDirectManagerUserId(@Param("employeeId") long employeeId);
+
+    @Select("""
+            SELECT id
+            FROM sys_user
+            WHERE employee_id = #{employeeId}
+              AND status = 'ACTIVE'
+              AND deleted = 0
+            """)
+    Long findActiveUserIdByEmployeeId(@Param("employeeId") long employeeId);
 
     @Select("""
             SELECT u.id
@@ -230,7 +247,7 @@ public interface WorkflowMapper {
             SELECT * FROM (
                 SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
                        r.request_no AS requestNo, e.name AS applicantName, lt.name AS leaveTypeName,
-                       r.start_time AS startTime, r.end_time AS endTime, r.duration_hours AS durationHours,
+                       r.start_time AS startTime, r.end_time AS endTime, NULL AS effectiveDate, r.duration_hours AS durationHours,
                        t.status, t.version, t.created_time AS createdTime
                 FROM wf_task t
                 JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'LEAVE'
@@ -242,7 +259,7 @@ public interface WorkflowMapper {
                 SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
                        r.request_no AS requestNo, e.name AS applicantName,
                        CASE r.compensation_type WHEN 'TIME_OFF' THEN '加班（调休）' ELSE '加班（加班费）' END AS leaveTypeName,
-                       r.start_time AS startTime, r.end_time AS endTime, r.duration_hours AS durationHours,
+                       r.start_time AS startTime, r.end_time AS endTime, NULL AS effectiveDate, r.duration_hours AS durationHours,
                        t.status, t.version, t.created_time AS createdTime
                 FROM wf_task t
                 JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'OVERTIME'
@@ -254,7 +271,7 @@ public interface WorkflowMapper {
                        c.change_no AS requestNo,
                        COALESCE(e.name, JSON_UNQUOTE(JSON_EXTRACT(c.after_snapshot, '$.name'))) AS applicantName,
                        c.change_type AS leaveTypeName,
-                       NULL AS startTime, NULL AS endTime, NULL AS durationHours,
+                       NULL AS startTime, NULL AS endTime, c.effective_date AS effectiveDate, NULL AS durationHours,
                        t.status, t.version, t.created_time AS createdTime
                 FROM wf_task t
                 JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'PERSONNEL_CHANGE'
@@ -265,6 +282,46 @@ public interface WorkflowMapper {
             ORDER BY createdTime DESC, id DESC
             """)
     List<WorkflowTaskListRow> listPendingTasks(@Param("userId") long userId);
+
+    @Select("""
+            SELECT * FROM (
+                SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
+                       r.request_no AS requestNo, e.name AS applicantName, lt.name AS leaveTypeName,
+                       r.start_time AS startTime, r.end_time AS endTime, NULL AS effectiveDate, r.duration_hours AS durationHours,
+                       t.status, t.version, t.created_time AS createdTime
+                FROM wf_task t
+                JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'LEAVE'
+                JOIN att_leave_request r ON r.id = i.business_id AND r.deleted = 0
+                JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
+                JOIN att_leave_type lt ON lt.id = r.leave_type_id AND lt.deleted = 0
+                WHERE t.status = 'PENDING' AND t.deleted = 0
+                UNION ALL
+                SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
+                       r.request_no AS requestNo, e.name AS applicantName,
+                       CASE r.compensation_type WHEN 'TIME_OFF' THEN '加班（调休）' ELSE '加班（加班费）' END AS leaveTypeName,
+                       r.start_time AS startTime, r.end_time AS endTime, NULL AS effectiveDate, r.duration_hours AS durationHours,
+                       t.status, t.version, t.created_time AS createdTime
+                FROM wf_task t
+                JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'OVERTIME'
+                JOIN att_overtime_request r ON r.id = i.business_id AND r.deleted = 0
+                JOIN hr_employee e ON e.id = r.employee_id AND e.deleted = 0
+                WHERE t.status = 'PENDING' AND t.deleted = 0
+                UNION ALL
+                SELECT t.id, t.instance_id AS instanceId, i.business_type AS businessType, i.business_id AS businessId,
+                       c.change_no AS requestNo,
+                       COALESCE(e.name, JSON_UNQUOTE(JSON_EXTRACT(c.after_snapshot, '$.name'))) AS applicantName,
+                       c.change_type AS leaveTypeName,
+                       NULL AS startTime, NULL AS endTime, c.effective_date AS effectiveDate, NULL AS durationHours,
+                       t.status, t.version, t.created_time AS createdTime
+                FROM wf_task t
+                JOIN wf_instance i ON i.id = t.instance_id AND i.deleted = 0 AND i.business_type = 'PERSONNEL_CHANGE'
+                JOIN hr_personnel_change c ON c.id = i.business_id AND c.deleted = 0
+                LEFT JOIN hr_employee e ON e.id = c.employee_id AND e.deleted = 0
+                WHERE t.status = 'PENDING' AND t.deleted = 0
+            ) pending
+            ORDER BY createdTime DESC, id DESC
+            """)
+    List<WorkflowTaskListRow> listAllPendingTasks();
 
     @Update("UPDATE wf_task SET status = 'APPROVED', version = version + 1 WHERE id = #{id} AND assignee_user_id = #{userId} AND status = 'PENDING' AND version = #{version}")
     int approveTask(@Param("id") long id, @Param("userId") long userId, @Param("version") int version);

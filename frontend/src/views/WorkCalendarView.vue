@@ -12,11 +12,34 @@ const year = ref(new Date().getFullYear())
 const loading = ref(false)
 const saving = ref(false)
 const loaded = ref(false)
-const form = reactive({ id: '', name: '', timeZone: 'UTC', status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE', version: '0', days: [] as CalendarDayDraft[] })
+const form = reactive({
+  id: '',
+  name: '',
+  timeZone: 'UTC',
+  status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
+  version: '0',
+  days: [] as CalendarDayDraft[],
+})
 const editing = computed(() => Boolean(form.id))
+const specialDayCount = computed(() => form.days.length)
 
 function resetForm() {
   Object.assign(form, { id: '', name: `${year.value} 工作日历`, timeZone: 'UTC', status: 'ACTIVE', version: '0', days: [] })
+}
+
+function isDefaultDay(day: CalendarDayDraft) {
+  if (!day.workDate) return false
+  const weekday = new Date(`${day.workDate}T00:00:00`).getDay()
+  const hasHolidayName = day.holidayName.trim().length > 0
+  if (hasHolidayName) return false
+  if (weekday === 0 || weekday === 6) return !day.workday && day.workHours === 0
+  return day.workday && day.workHours === 8
+}
+
+function normalizeDays(days: CalendarDayDraft[]) {
+  return [...days]
+    .filter((day) => !isDefaultDay(day))
+    .sort((left, right) => left.workDate.localeCompare(right.workDate))
 }
 
 async function load() {
@@ -25,8 +48,19 @@ async function load() {
   try {
     const calendar = await fetchWorkCalendar(year.value)
     Object.assign(form, {
-      id: calendar.id, name: calendar.name, timeZone: calendar.timeZone, status: calendar.status, version: calendar.version,
-      days: calendar.days.map((day) => ({ workDate: day.workDate, workday: day.workday, workHours: day.workHours, holidayName: day.holidayName ?? '' })),
+      id: calendar.id,
+      name: calendar.name,
+      timeZone: calendar.timeZone,
+      status: calendar.status,
+      version: calendar.version,
+      days: normalizeDays(
+        calendar.days.map((day) => ({
+          workDate: day.workDate,
+          workday: day.workday,
+          workHours: day.workHours,
+          holidayName: day.holidayName ?? '',
+        }))
+      ),
     })
   } catch (error: any) {
     if (error?.response?.status === 404) resetForm()
@@ -54,18 +88,27 @@ function payload(): WorkCalendarPayload | null {
     ElMessage.warning('请填写日历名称和时区')
     return null
   }
+  const normalizedDays = normalizeDays(form.days)
   const dates = new Set<string>()
-  for (const day of form.days) {
+  for (const day of normalizedDays) {
     if (!day.workDate || dates.has(day.workDate) || (day.workday && day.workHours <= 0) || (!day.workday && day.workHours !== 0)) {
       ElMessage.warning('请检查日期、重复项和工作时长')
       return null
     }
     dates.add(day.workDate)
   }
+  form.days = normalizedDays
   return {
     ...(editing.value ? {} : { calendarYear: year.value }),
-    name: form.name.trim(), timeZone: form.timeZone.trim(), status: form.status,
-    days: form.days.map((day) => ({ workDate: day.workDate, workday: day.workday, workHours: day.workHours, ...(day.holidayName.trim() ? { holidayName: day.holidayName.trim() } : {}) })),
+    name: form.name.trim(),
+    timeZone: form.timeZone.trim(),
+    status: form.status,
+    days: normalizedDays.map((day) => ({
+      workDate: day.workDate,
+      workday: day.workday,
+      workHours: day.workHours,
+      ...(day.holidayName.trim() ? { holidayName: day.holidayName.trim() } : {}),
+    })),
     ...(editing.value ? { version: form.version } : {}),
   }
 }
@@ -109,7 +152,16 @@ onMounted(load)
             <el-form-item label="状态"><el-radio-group v-model="form.status"><el-radio-button label="ACTIVE">启用</el-radio-button><el-radio-button label="INACTIVE">停用</el-radio-button></el-radio-group></el-form-item>
           </div>
         </el-form>
-        <div class="calendar-days-heading"><h2>特殊日期</h2><el-tooltip content="新增日期"><el-button circle :icon="Plus" aria-label="新增日期" @click="addDay" /></el-tooltip></div>
+        <div class="calendar-days-heading">
+          <div>
+            <h2>特殊日期</h2>
+            <p class="calendar-days-note">这里只维护偏离默认规则的日期。未列出的周一至周五默认按 8 小时工作日计算，周末默认不计入工时。</p>
+          </div>
+          <div class="calendar-days-actions">
+            <span class="calendar-days-count">共 {{ specialDayCount }} 项</span>
+            <el-tooltip content="新增日期"><el-button circle :icon="Plus" aria-label="新增日期" @click="addDay" /></el-tooltip>
+          </div>
+        </div>
         <el-table :data="form.days" class="data-table">
           <el-table-column label="日期" min-width="160"><template #default="{ row }"><el-date-picker v-model="row.workDate" type="date" value-format="YYYY-MM-DD" /></template></el-table-column>
           <el-table-column label="类型" width="160"><template #default="{ row }"><el-switch v-model="row.workday" active-text="工作日" inactive-text="非工作日" @change="updateDayKind(row)" /></template></el-table-column>
@@ -122,3 +174,29 @@ onMounted(load)
     </div>
   </PageFrame>
 </template>
+
+<style scoped>
+.calendar-days-note {
+  margin: 8px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.calendar-days-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-days-count {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .calendar-days-actions {
+    align-self: flex-start;
+  }
+}
+</style>

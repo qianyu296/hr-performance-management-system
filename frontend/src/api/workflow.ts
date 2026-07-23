@@ -12,9 +12,10 @@ export interface WorkflowTaskItem {
   requestNo: string
   applicantName: string
   leaveTypeName: string
-  startTime: string
-  endTime: string
-  durationHours: number
+  startTime: string | null
+  endTime: string | null
+  effectiveDate: string | null
+  durationHours: number | null
   status: string
   version: number
 }

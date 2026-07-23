@@ -10,12 +10,6 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const items = computed(() => visibleNavigationItems(authStore.permissions))
-const activePath = computed(() => {
-  if (route.path.startsWith('/org/') || route.path.startsWith('/personnel/')) return '/people'
-  if (route.path.startsWith('/attendance/')) return '/attendance'
-  if (route.path.startsWith('/workflow/')) return '/workflow'
-  return route.path
-})
 </script>
 
 <template>
@@ -24,11 +18,22 @@ const activePath = computed(() => {
       <span class="brand-mark">H</span>
       <span v-show="!collapsed">HRPM</span>
     </div>
-    <el-menu :default-active="activePath" :collapse="collapsed" :collapse-transition="false" @select="router.push">
-      <el-menu-item v-for="item in items" :key="item.path" :index="item.path">
-        <el-icon><component :is="item.icon" /></el-icon>
-        <template #title>{{ item.title }}</template>
-      </el-menu-item>
+    <el-menu :default-active="route.path" :collapse="collapsed" :collapse-transition="false" @select="router.push">
+      <template v-for="item in items" :key="item.path">
+        <el-sub-menu v-if="item.children" :index="item.path">
+          <template #title>
+            <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
+            <span>{{ item.title }}</span>
+          </template>
+          <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
+            {{ child.title }}
+          </el-menu-item>
+        </el-sub-menu>
+        <el-menu-item v-else :index="item.path">
+          <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
+        </el-menu-item>
+      </template>
     </el-menu>
   </aside>
 </template>

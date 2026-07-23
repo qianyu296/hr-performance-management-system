@@ -52,8 +52,11 @@ public class LeaveWorkflowService {
             throw new WorkflowTemplateMissingException();
         }
         List<WorkflowNodeSnapshot> nodeSnapshots = workflowMapper.findNodes(template.id()).stream()
-                .map(node -> new WorkflowNodeSnapshot(node.nodeNo(), node.nodeType(), parseRule(node),
-                        workflowApproverResolver.resolve(node, request.employeeId(), request.departmentId())))
+                .map(node -> {
+                    JsonNode rule = parseRule(node);
+                    return new WorkflowNodeSnapshot(node.nodeNo(), node.nodeType(), rule,
+                            resolveAssignee(request, node, rule));
+                })
                 .toList();
         if (nodeSnapshots.isEmpty()) {
             throw new WorkflowTemplateMissingException();
@@ -117,6 +120,18 @@ public class LeaveWorkflowService {
         } catch (Exception exception) {
             throw new WorkflowTemplateMissingException();
         }
+    }
+
+    private long resolveAssignee(LeaveRequestSubmission request, WorkflowTemplateNode node, JsonNode rule) {
+        String ruleType = rule.path("type").asText(node.nodeType());
+        if ("DIRECT_MANAGER".equals(ruleType)) {
+            Long managerUserId = workflowApproverResolver.resolveDirectManagerUserId(request.employeeId(), null);
+            if (managerUserId == null) {
+                throw new IllegalArgumentException("Leave request requires a direct manager approver");
+            }
+            return managerUserId;
+        }
+        return workflowApproverResolver.resolve(node, request.employeeId(), request.departmentId());
     }
 
     private String serialize(Object value) {

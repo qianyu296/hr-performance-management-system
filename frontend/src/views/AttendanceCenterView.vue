@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -39,12 +39,11 @@ const sections: CenterSection[] = [
   {
     key: 'config',
     title: '规则配置',
-    description: '维护假勤制度、日历和汇总口径。',
-    summary: '适合假勤管理员集中维护年度规则、工作日历和统计结果。',
+    description: '维护假勤制度和工作日历规则。',
+    summary: '适合假勤管理员集中维护年度规则、请假类型和工作日历。',
     entries: [
       { path: '/attendance/leave-types', title: '请假类型', description: '配置年度额度、扣减规则和最小单位。', permissions: ['attendance:manage'] },
       { path: '/attendance/calendar', title: '工作日历', description: '维护节假日、调休和工时安排。', permissions: ['attendance:manage'] },
-      { path: '/attendance/summary', title: '月度假勤汇总', description: '按员工查看请假、加班和待审批汇总。', permissions: ['attendance:manage'] },
     ],
   },
 ]

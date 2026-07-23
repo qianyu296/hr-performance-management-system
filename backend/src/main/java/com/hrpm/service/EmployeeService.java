@@ -1,21 +1,41 @@
 package com.hrpm.service;
 
 import com.hrpm.common.IdGenerator;
-import com.hrpm.common.exception.*;
+import com.hrpm.common.exception.DataScopeDeniedException;
+import com.hrpm.common.exception.DuplicateResourceException;
+import com.hrpm.common.exception.OrganizationReferenceInvalidException;
+import com.hrpm.common.exception.ResourceNotFoundException;
+import com.hrpm.common.exception.VersionConflictException;
 import com.hrpm.dto.CreateEmployeeDTO;
 import com.hrpm.dto.UpdateEmployeeDTO;
-import com.hrpm.entity.*;
-import com.hrpm.mapper.*;
-import com.hrpm.vo.*;
+import com.hrpm.entity.Department;
+import com.hrpm.entity.Employee;
+import com.hrpm.entity.EmployeeDataScope;
+import com.hrpm.entity.EmploymentStatus;
+import com.hrpm.entity.Position;
+import com.hrpm.entity.UserAccount;
+import com.hrpm.mapper.DepartmentMapper;
+import com.hrpm.mapper.EmployeeMapper;
+import com.hrpm.mapper.PositionMapper;
+import com.hrpm.mapper.RankMapper;
+import com.hrpm.mapper.UserAccountMapper;
+import com.hrpm.vo.CreatedEmployeeVO;
+import com.hrpm.vo.EmployeeListVO;
+import com.hrpm.vo.EmployeeVO;
+import com.hrpm.vo.PageVO;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
-import java.security.SecureRandom;
-import java.util.Locale;
 
 @Service
 public class EmployeeService {
+    private static final String INITIAL_PASSWORD = "123456";
+    private static final String EMPLOYEE_SELF_SERVICE_ROLE_CODE = "EMPLOYEE_SELF_SERVICE";
+    private static final String HR_SPECIALIST_ROLE_CODE = "HR_SPECIALIST";
+
     private final EmployeeMapper employeeMapper;
     private final DepartmentMapper departmentMapper;
     private final PositionMapper positionMapper;
@@ -28,8 +48,10 @@ public class EmployeeService {
     private final LeaveBalanceProvisioningService leaveBalanceProvisioningService;
 
     public EmployeeService(EmployeeMapper employeeMapper, DepartmentMapper departmentMapper,
-                           PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator, EmployeeDataScopeResolver dataScopeResolver,
-                           OrganizationAccessService organizationAccessService, UserAccountMapper userAccountMapper, PasswordEncoder passwordEncoder,
+                           PositionMapper positionMapper, RankMapper rankMapper, IdGenerator idGenerator,
+                           EmployeeDataScopeResolver dataScopeResolver,
+                           OrganizationAccessService organizationAccessService, UserAccountMapper userAccountMapper,
+                           PasswordEncoder passwordEncoder,
                            LeaveBalanceProvisioningService leaveBalanceProvisioningService) {
         this.employeeMapper = employeeMapper;
         this.departmentMapper = departmentMapper;
@@ -45,18 +67,30 @@ public class EmployeeService {
 
     public PageVO<EmployeeListVO> list(long userId, int page, int pageSize, String keyword, Long departmentId,
                                        Long positionId, String employmentStatus) {
-        if (page < 1 || pageSize < 1 || pageSize > 100) throw new OrganizationReferenceInvalidException("Invalid pagination");
+        if (page < 1 || pageSize < 1 || pageSize > 100) {
+            throw new OrganizationReferenceInvalidException("Invalid pagination");
+        }
         EmployeeDataScope scope = dataScopeResolver.resolve(userId);
-        if (scope.isEmpty()) return new PageVO<>(List.of(), 0, page, pageSize);
+        if (scope.isEmpty()) {
+            return new PageVO<>(List.of(), 0, page, pageSize);
+        }
         List<EmployeeListVO> records = employeeMapper.findPage(keyword, departmentId, positionId, employmentStatus,
-                scope.unrestricted() ? null : scope.employeeIds(), scope.unrestricted() ? null : scope.departmentIds(), (page - 1) * pageSize, pageSize).stream().map(EmployeeListVO::from).toList();
+                        scope.unrestricted() ? null : scope.employeeIds(),
+                        scope.unrestricted() ? null : scope.departmentIds(),
+                        (page - 1) * pageSize, pageSize)
+                .stream()
+                .map(EmployeeListVO::from)
+                .toList();
         return new PageVO<>(records, employeeMapper.count(keyword, departmentId, positionId, employmentStatus,
-                scope.unrestricted() ? null : scope.employeeIds(), scope.unrestricted() ? null : scope.departmentIds()), page, pageSize);
+                scope.unrestricted() ? null : scope.employeeIds(),
+                scope.unrestricted() ? null : scope.departmentIds()), page, pageSize);
     }
 
     public Employee get(long id) {
         Employee employee = employeeMapper.findById(id);
-        if (employee == null) throw new ResourceNotFoundException("Employee not found");
+        if (employee == null) {
+            throw new ResourceNotFoundException("Employee not found");
+        }
         return employee;
     }
 
@@ -69,12 +103,18 @@ public class EmployeeService {
     @Transactional
     public CreatedEmployeeVO create(long userId, CreateEmployeeDTO request) {
         organizationAccessService.requireWritableDepartment(userId, parseId(request.departmentId(), "Invalid department ID"));
-        if (employeeMapper.countByEmployeeNo(request.employeeNo()) > 0) throw new DuplicateResourceException("Employee number already exists");
+        if (employeeMapper.countByEmployeeNo(request.employeeNo()) > 0) {
+            throw new DuplicateResourceException("Employee number already exists");
+        }
         String username = request.employeeNo().trim().toLowerCase(Locale.ROOT);
-        if (userAccountMapper.findByUsername(username) != null) throw new DuplicateResourceException("Employee account username already exists");
+        if (userAccountMapper.findByUsername(username) != null) {
+            throw new DuplicateResourceException("Employee account username already exists");
+        }
         long id = idGenerator.nextId();
         References refs = validateReferences(id, request.departmentId(), request.positionId(), request.rankId(), request.managerEmployeeId());
-        if (refs.managerId() != null) organizationAccessService.requireWritableEmployee(userId, get(refs.managerId()));
+        if (refs.managerId() != null) {
+            organizationAccessService.requireWritableEmployee(userId, get(refs.managerId()));
+        }
         String employmentStatus = validateEmploymentStatus(request.employmentStatus());
         Employee employee = new Employee(id, request.employeeNo(), request.name(), request.gender(), refs.departmentId(), null,
                 refs.positionId(), null, refs.rankId(), null, refs.managerId(), null, employmentStatus, request.hireDate(),
@@ -89,29 +129,42 @@ public class EmployeeService {
         Employee current = get(id);
         organizationAccessService.requireWritableEmployee(userId, current);
         Employee employee = new Employee(id, current.employeeNo(), request.name(), request.gender(), current.departmentId(), null,
-                current.positionId(), null, current.rankId(), null, current.managerEmployeeId(), null, current.employmentStatus(), current.hireDate(),
-                current.probationStartDate(), current.probationEndDate(), parseVersion(request.version()));
-        if (employeeMapper.update(employee) == 0) throw new VersionConflictException();
+                current.positionId(), null, current.rankId(), null, current.managerEmployeeId(), null,
+                current.employmentStatus(), current.hireDate(), current.probationStartDate(), current.probationEndDate(),
+                parseVersion(request.version()));
+        if (employeeMapper.update(employee) == 0) {
+            throw new VersionConflictException();
+        }
         return get(id);
     }
 
     private References validateReferences(long employeeId, String departmentId, String positionId, String rankId, String managerId) {
         long department = Long.parseLong(departmentId);
         Department departmentValue = departmentMapper.findById(department);
-        if (departmentValue == null || !"ACTIVE".equals(departmentValue.status())) throw new OrganizationReferenceInvalidException("Department is missing or inactive");
+        if (departmentValue == null || !"ACTIVE".equals(departmentValue.status())) {
+            throw new OrganizationReferenceInvalidException("Department is missing or inactive");
+        }
         long position = Long.parseLong(positionId);
         Position positionValue = positionMapper.findById(position);
-        if (positionValue == null || !"ACTIVE".equals(positionValue.status())) throw new OrganizationReferenceInvalidException("Position is missing or inactive");
+        if (positionValue == null || !"ACTIVE".equals(positionValue.status())) {
+            throw new OrganizationReferenceInvalidException("Position is missing or inactive");
+        }
         Long rank = parseNullable(rankId);
         if (rank != null) {
             com.hrpm.entity.Rank rankValue = rankMapper.findById(rank);
-            if (rankValue == null || !"ACTIVE".equals(rankValue.status())) throw new OrganizationReferenceInvalidException("Rank is missing or inactive");
+            if (rankValue == null || !"ACTIVE".equals(rankValue.status())) {
+                throw new OrganizationReferenceInvalidException("Rank is missing or inactive");
+            }
         }
         Long manager = parseNullable(managerId);
         if (manager != null) {
-            if (manager == employeeId) throw new OrganizationReferenceInvalidException("Employee cannot manage themselves");
+            if (manager == employeeId) {
+                throw new OrganizationReferenceInvalidException("Employee cannot manage themselves");
+            }
             Employee managerValue = employeeMapper.findById(manager);
-            if (managerValue == null || "TERMINATED".equals(managerValue.employmentStatus())) throw new OrganizationReferenceInvalidException("Manager is missing or inactive");
+            if (managerValue == null || "TERMINATED".equals(managerValue.employmentStatus())) {
+                throw new OrganizationReferenceInvalidException("Manager is missing or inactive");
+            }
         }
         return new References(department, position, rank, manager);
     }
@@ -140,7 +193,9 @@ public class EmployeeService {
         }
     }
 
-    private Long parseNullable(String value) { return value == null || value.isBlank() ? null : parseId(value, "Invalid organization reference"); }
+    private Long parseNullable(String value) {
+        return value == null || value.isBlank() ? null : parseId(value, "Invalid organization reference");
+    }
 
     @Transactional
     public String ensureActiveEmployeeAccount(long employeeId, String employeeNo) {
@@ -150,20 +205,28 @@ public class EmployeeService {
             if (!"ACTIVE".equals(existing.status())) {
                 userAccountMapper.activateByEmployeeId(employeeId);
             }
+            syncEmployeeAccountRoles(employeeId);
             return existing.username();
         }
         UserAccount byUsername = userAccountMapper.findByUsername(username);
         if (byUsername != null) {
             throw new DuplicateResourceException("Employee account username already exists");
         }
-        String initialPassword = temporaryPassword();
+        String initialPassword = initialPassword();
         long accountUserId = idGenerator.nextId();
         userAccountMapper.insertEmployeeAccount(accountUserId, username, passwordEncoder.encode(initialPassword), employeeId);
-        if (userAccountMapper.assignEmployeeSelfServiceRole(idGenerator.nextId(), accountUserId) != 1) {
-            throw new IllegalStateException("Employee self-service role is unavailable");
-        }
-        leaveBalanceProvisioningService.initializeForEmployee(employeeId, java.time.LocalDate.now().getYear());
+        syncAccountRoles(accountUserId, get(employeeId));
+        leaveBalanceProvisioningService.initializeForEmployee(employeeId, LocalDate.now().getYear());
         return initialPassword;
+    }
+
+    @Transactional
+    public void syncEmployeeAccountRoles(long employeeId) {
+        UserAccount account = userAccountMapper.findByEmployeeId(employeeId);
+        if (account == null) {
+            return;
+        }
+        syncAccountRoles(account.id(), get(employeeId));
     }
 
     @Transactional
@@ -171,11 +234,54 @@ public class EmployeeService {
         userAccountMapper.disableForEmployee(employeeId);
     }
 
-    private String temporaryPassword() {
-        final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-        SecureRandom random = new SecureRandom(); StringBuilder value = new StringBuilder("Hrpm!");
-        for (int index = 0; index < 12; index++) value.append(alphabet.charAt(random.nextInt(alphabet.length())));
-        return value.toString();
+    private void syncAccountRoles(long userId, Employee employee) {
+        ensureRole(userId, EMPLOYEE_SELF_SERVICE_ROLE_CODE);
+        if (shouldGrantHrRole(employee.departmentId(), employee.positionId())) {
+            ensureRole(userId, HR_SPECIALIST_ROLE_CODE);
+        } else {
+            userAccountMapper.deleteRoleByCode(userId, HR_SPECIALIST_ROLE_CODE);
+        }
     }
-    private record References(long departmentId, long positionId, Long rankId, Long managerId) {}
+
+    private void ensureRole(long userId, String roleCode) {
+        if (userAccountMapper.countRoleByCode(userId, roleCode) > 0) {
+            return;
+        }
+        if (userAccountMapper.assignRoleByCode(idGenerator.nextId(), userId, roleCode) != 1) {
+            throw new IllegalStateException("Required role is unavailable: " + roleCode);
+        }
+    }
+
+    private boolean shouldGrantHrRole(long departmentId, long positionId) {
+        Department department = departmentMapper.findById(departmentId);
+        Position position = positionMapper.findById(positionId);
+        return hasHrMarker(department == null ? null : department.code())
+                || hasHrMarker(department == null ? null : department.name())
+                || hasHrMarker(position == null ? null : position.code())
+                || hasHrMarker(position == null ? null : position.name())
+                || hasHrMarker(position == null ? null : position.jobFamily());
+    }
+
+    private boolean hasHrMarker(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String normalized = value.trim();
+        String upper = normalized.toUpperCase(Locale.ROOT);
+        return normalized.contains("人力")
+                || normalized.contains("人事")
+                || upper.equals("HR")
+                || upper.startsWith("HR")
+                || upper.contains("_HR")
+                || upper.contains("-HR")
+                || upper.contains("HR_")
+                || upper.contains("HR-");
+    }
+
+    private String initialPassword() {
+        return INITIAL_PASSWORD;
+    }
+
+    private record References(long departmentId, long positionId, Long rankId, Long managerId) {
+    }
 }

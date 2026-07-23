@@ -31,6 +31,7 @@ class PersonnelChangeApiIntegrationTests {
     private static final long HR_EMPLOYEE_ID = 99311L;
     private static final long EMPLOYEE_USER_ID = 99322L;
     private static final long EMPLOYEE_ID = 99312L;
+    private static final long ADMIN_USER_ID = 99323L;
     private static final long CURRENT_DEPARTMENT_ID = 99301L;
     private static final long TARGET_DEPARTMENT_ID = 99302L;
     private static final long HR_POSITION_ID = 99303L;
@@ -63,8 +64,8 @@ class PersonnelChangeApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM hr_employee_history");
         jdbcTemplate.update("DELETE FROM hr_personnel_change");
 
-        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (?, ?)", HR_USER_ID, EMPLOYEE_USER_ID);
-        jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", HR_USER_ID, EMPLOYEE_USER_ID);
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (?, ?, ?)", HR_USER_ID, EMPLOYEE_USER_ID, ADMIN_USER_ID);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?, ?)", HR_USER_ID, EMPLOYEE_USER_ID, ADMIN_USER_ID);
         jdbcTemplate.update("DELETE FROM hr_employee WHERE id IN (?, ?)", HR_EMPLOYEE_ID, EMPLOYEE_ID);
         jdbcTemplate.update("DELETE FROM hr_rank WHERE id IN (?, ?)", EMPLOYEE_RANK_ID, TARGET_RANK_ID);
         jdbcTemplate.update("DELETE FROM hr_position WHERE id IN (?, ?, ?)", HR_POSITION_ID, EMPLOYEE_POSITION_ID, TARGET_POSITION_ID);
@@ -298,6 +299,74 @@ class PersonnelChangeApiIntegrationTests {
                         .param("departmentId", Long.toString(TARGET_DEPARTMENT_ID)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(0));
+    }
+
+    @Test
+    void pendingPersonnelWorkflowTaskReturnsEffectiveDate() throws Exception {
+        String token = bearer(HR_USER_ID, "personnel-hr");
+        JsonNode created = createTransferChange(token, LocalDate.of(2026, 7, 24));
+        long changeId = created.path("data").path("id").asLong();
+
+        mockMvc.perform(post("/personnel-changes/{id}/submit", changeId).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/workflow/tasks").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].businessType").value("PERSONNEL_CHANGE"))
+                .andExpect(jsonPath("$.data[0].leaveTypeName").value("TRANSFER"))
+                .andExpect(jsonPath("$.data[0].effectiveDate").value("2026-07-24"));
+    }
+    @Test
+    void adminWithoutLinkedEmployeeCanSubmitOnboardChangeWhenManagerIsAssigned() throws Exception {
+        jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version) VALUES (?, 'personnel-admin', ?, 'ACTIVE', 0)", ADMIN_USER_ID, new BCryptPasswordEncoder().encode("unused"));
+        jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (99333, ?, 9000002)", ADMIN_USER_ID);
+        String token = bearer(ADMIN_USER_ID, "personnel-admin");
+        jdbcTemplate.update("DELETE FROM wf_template_node WHERE template_id = ?", TEMPLATE_ID);
+        jdbcTemplate.update("""
+                INSERT INTO wf_template_node (id, template_id, node_no, node_type, approver_rule)
+                VALUES (99342, ?, 1, 'DIRECT_MANAGER', JSON_OBJECT('type', 'DIRECT_MANAGER'))
+                """, TEMPLATE_ID);
+
+        JsonNode created = objectMapper.readTree(mockMvc.perform(post("/personnel-changes").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "changeType":"ONBOARD",
+                                  "effectiveDate":"%s",
+                                  "reason":"Admin creates first onboard request",
+                                  "afterAssignment":{
+                                    "employeeNo":"PC-NEW-001",
+                                    "name":"New Hire",
+                                    "departmentId":"99302",
+                                    "positionId":"99305",
+                                    "rankId":"99307",
+                                    "managerEmployeeId":"99311",
+                                    "employmentStatus":"PROBATION",
+                                    "hireDate":"%s",
+                                    "probationStartDate":"%s",
+                                    "probationEndDate":"%s"
+                                  }
+                                }
+                                """.formatted(LocalDate.now(), LocalDate.now(), LocalDate.now(), LocalDate.now().plusMonths(6))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andReturn().getResponse().getContentAsString());
+
+        long changeId = created.path("data").path("id").asLong();
+
+        mockMvc.perform(post("/personnel-changes/{id}/submit", changeId).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+
+        assertEquals(HR_USER_ID, jdbcTemplate.queryForObject("""
+                SELECT assignee_user_id
+                FROM wf_task
+                WHERE instance_id = (SELECT workflow_instance_id FROM hr_personnel_change WHERE id = ?)
+                """, Long.class, changeId));
     }
 
     @Test

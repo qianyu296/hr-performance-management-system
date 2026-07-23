@@ -9,6 +9,7 @@ import com.hrpm.common.exception.DuplicateResourceException;
 import com.hrpm.common.exception.OrganizationReferenceInvalidException;
 import com.hrpm.common.exception.ResourceNotFoundException;
 import com.hrpm.common.exception.VersionConflictException;
+import com.hrpm.common.exception.WorkflowTaskInvalidException;
 import com.hrpm.common.exception.WorkflowTemplateMissingException;
 import com.hrpm.dto.PersonnelChangeDTOs.ChangeAction;
 import com.hrpm.dto.PersonnelChangeDTOs.ChangeAssignment;
@@ -181,7 +182,8 @@ public class PersonnelChangeService {
         if (template == null) {
             throw new WorkflowTemplateMissingException();
         }
-        long initiatorEmployeeId = resolveWorkflowInitiatorEmployeeId(userId, change);
+        Long initiatorEmployeeId = resolveWorkflowInitiatorEmployeeId(userId, change);
+        Long onboardingManagerEmployeeId = change.employeeId() == null ? afterSnapshot.managerEmployeeId() : null;
         WorkflowInstance instance = change.workflowInstanceId() == null ? null : workflowMapper.findInstance(change.workflowInstanceId());
         if (instance != null && "RETURNED".equals(instance.status()) && instance.initiatorUserId() == userId) {
             WorkflowInstanceSnapshot snapshot = parseWorkflowSnapshot(workflowMapper.findInstanceSnapshot(instance.id()));
@@ -198,11 +200,11 @@ public class PersonnelChangeService {
             return detail(userId, id);
         }
         List<WorkflowNodeSnapshot> nodes = workflowMapper.findNodes(template.id()).stream()
-                .map(node -> resolveNode(node, change, initiatorEmployeeId, targetDepartmentId))
+                .map(node -> resolveNode(node, initiatorEmployeeId, onboardingManagerEmployeeId, targetDepartmentId, userId))
                 .toList();
         WorkflowNodeSnapshot firstNode = firstNode(nodes);
         WorkflowInstanceSnapshot snapshot = new WorkflowInstanceSnapshot(template.id(), template.templateVersion(),
-                initiatorEmployeeId, targetDepartmentId, nodes);
+                initiatorEmployeeId == null ? 0L : initiatorEmployeeId, targetDepartmentId, nodes);
         long instanceId = idGenerator.nextId();
         workflowMapper.insertBusinessInstance(instanceId, BUSINESS_TYPE, change.id(), userId, toJson(snapshot), firstNode.nodeNo());
         workflowMapper.insertTask(idGenerator.nextId(), instanceId, firstNode.nodeNo(), toJson(firstNode), firstNode.assigneeUserId());
@@ -543,21 +545,48 @@ public class PersonnelChangeService {
         }
     }
 
-    private long resolveWorkflowInitiatorEmployeeId(long userId, PersonnelChange change) {
+    private Long resolveWorkflowInitiatorEmployeeId(long userId, PersonnelChange change) {
         if (change.employeeId() != null) {
             return change.employeeId();
         }
         UserAccount account = userAccountMapper.findById(userId);
-        if (account == null || account.employeeId() == null) {
+        if (account == null) {
             throw new WorkflowTemplateMissingException();
         }
         return account.employeeId();
     }
 
-    private WorkflowNodeSnapshot resolveNode(WorkflowTemplateNode node, PersonnelChange change,
-                                             long initiatorEmployeeId, long targetDepartmentId) {
+    private WorkflowNodeSnapshot resolveNode(WorkflowTemplateNode node, Long initiatorEmployeeId,
+                                             Long onboardingManagerEmployeeId, long targetDepartmentId,
+                                             long submitterUserId) {
         return new WorkflowNodeSnapshot(node.nodeNo(), node.nodeType(), parseJsonNode(node.approverRule()),
-                workflowApproverResolver.resolve(node, initiatorEmployeeId, targetDepartmentId));
+                resolveApproverUserId(node, initiatorEmployeeId, onboardingManagerEmployeeId, targetDepartmentId, submitterUserId));
+    }
+
+    private long resolveApproverUserId(WorkflowTemplateNode node, Long initiatorEmployeeId,
+                                       Long onboardingManagerEmployeeId, long targetDepartmentId,
+                                       long submitterUserId) {
+        if ("DIRECT_MANAGER".equals(node.nodeType())) {
+            return resolveDirectManagerApprover(initiatorEmployeeId, onboardingManagerEmployeeId, targetDepartmentId, submitterUserId);
+        }
+        long approverUserId = workflowApproverResolver.resolve(node, initiatorEmployeeId, onboardingManagerEmployeeId, targetDepartmentId);
+        if (approverUserId == submitterUserId) {
+            throw new WorkflowTaskInvalidException();
+        }
+        return approverUserId;
+    }
+
+    private long resolveDirectManagerApprover(Long initiatorEmployeeId, Long onboardingManagerEmployeeId,
+                                              long targetDepartmentId, long submitterUserId) {
+        Long directManagerUserId = workflowApproverResolver.resolveDirectManagerUserId(initiatorEmployeeId, onboardingManagerEmployeeId);
+        if (directManagerUserId != null && directManagerUserId != submitterUserId) {
+            return directManagerUserId;
+        }
+        Long departmentLeaderUserId = workflowApproverResolver.resolveDepartmentLeaderUserId(targetDepartmentId);
+        if (departmentLeaderUserId != null && departmentLeaderUserId != submitterUserId) {
+            return departmentLeaderUserId;
+        }
+        throw new WorkflowTaskInvalidException();
     }
 
     private WorkflowNodeSnapshot firstNode(List<WorkflowNodeSnapshot> nodes) {
@@ -682,6 +711,9 @@ public class PersonnelChangeService {
         } else if (parseChangeType(change.changeType()) == PersonnelChangeType.ONBOARD) {
             employeeService.ensureActiveEmployeeAccount(finalEmployeeId, afterSnapshot.employeeNo());
             accountAction = "ENSURED_ACTIVE";
+        } else {
+            employeeService.syncEmployeeAccountRoles(finalEmployeeId);
+            accountAction = "ROLES_SYNCED";
         }
         if (personnelChangeMapper.markEffective(change.id(), finalEmployeeId, actorUserId, change.version()) != 1) {
             throw new VersionConflictException();

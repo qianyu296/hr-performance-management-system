@@ -5,7 +5,9 @@ import { Refresh } from '@element-plus/icons-vue'
 import PageFrame from '@/components/common/PageFrame.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { fetchAttendanceMonthlySummaries, rebuildAttendanceMonthlySummaries, type AttendanceMonthlySummary } from '@/api/attendance'
+import { useAuthStore } from '@/stores/auth'
 
+const authStore = useAuthStore()
 const today = new Date()
 const month = ref(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
 const departmentId = ref('')
@@ -14,7 +16,9 @@ const loading = ref(false)
 const rebuilding = ref(false)
 const summaries = ref<AttendanceMonthlySummary[]>([])
 
-function formatDateTime(value: string) { return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) }
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
 
 async function load() {
   loading.value = true
@@ -22,27 +26,34 @@ async function load() {
     summaries.value = await fetchAttendanceMonthlySummaries(month.value, { departmentId: departmentId.value || undefined, employeeId: employeeId.value || undefined })
   } catch {
     summaries.value = []
-    ElMessage.error('无法加载月度汇总')
-  } finally { loading.value = false }
+    ElMessage.error('无法加载假勤统计数据')
+  } finally {
+    loading.value = false
+  }
 }
 
 async function rebuild() {
   rebuilding.value = true
   try {
     const result = await rebuildAttendanceMonthlySummaries(month.value)
-    ElMessage.success(`汇总已重建，共 ${result.affectedRows} 条员工记录`)
+    ElMessage.success(`统计已重建，共 ${result.affectedRows} 条员工记录`)
     await load()
   } catch {
-    ElMessage.error('汇总重建失败，请稍后重试')
-  } finally { rebuilding.value = false }
+    ElMessage.error('统计重建失败，请稍后重试')
+  } finally {
+    rebuilding.value = false
+  }
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <PageFrame title="月度假勤汇总" description="按员工聚合当月已通过请假、加班、调休净变动和待审批数量。">
-    <template #actions><el-button :icon="Refresh" @click="load">刷新</el-button><el-button type="primary" :loading="rebuilding" @click="rebuild">重建本月汇总</el-button></template>
+  <PageFrame title="假勤统计" description="按员工聚合当月已通过请假、加班、调休净变动和待审批数量。">
+    <template #actions>
+      <el-button :icon="Refresh" @click="load">刷新</el-button>
+      <el-button v-if="authStore.can('attendance:manage')" type="primary" :loading="rebuilding" @click="rebuild">重建本月统计</el-button>
+    </template>
     <template #filters>
       <el-date-picker v-model="month" type="month" value-format="YYYY-MM" placeholder="统计月份" @change="load" />
       <el-input v-model="departmentId" inputmode="numeric" placeholder="部门 ID" clearable @change="load" />
@@ -58,6 +69,6 @@ onMounted(load)
       <el-table-column prop="pendingRequestCount" label="待审批" width="100" />
       <el-table-column label="生成时间" min-width="165"><template #default="{ row }">{{ formatDateTime(row.generatedTime) }}</template></el-table-column>
     </el-table>
-    <EmptyState v-if="!loading && summaries.length === 0" title="暂无月度汇总" description="选择月份后点击重建，生成当前员工范围的汇总快照。" />
+    <EmptyState v-if="!loading && summaries.length === 0" title="暂无统计数据" description="选择月份后可查看员工范围内的假勤统计结果。" />
   </PageFrame>
 </template>

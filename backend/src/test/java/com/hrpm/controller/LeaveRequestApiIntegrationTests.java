@@ -48,16 +48,16 @@ class LeaveRequestApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM att_balance_change");
         jdbcTemplate.update("DELETE FROM att_leave_balance");
         jdbcTemplate.update("DELETE FROM att_leave_request");
-        jdbcTemplate.update("DELETE FROM att_leave_type WHERE id = ?", 92001L);
-        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id = ?", 90001L);
+        jdbcTemplate.update("DELETE FROM att_leave_type WHERE id = ? OR code = 'ANNUAL'", 92001L);
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (?, ?, ?)", 90001L, 90003L, 90004L);
         jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id = ?", 92002L);
         jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id = ?", 92006L);
         jdbcTemplate.update("DELETE FROM sys_menu WHERE id = ?", 92003L);
         jdbcTemplate.update("DELETE FROM sys_menu WHERE id = ?", 92007L);
         jdbcTemplate.update("DELETE FROM sys_role WHERE id = ?", 92002L);
         jdbcTemplate.update("DELETE FROM sys_role WHERE id = ?", 92006L);
-        jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", 90002L);
-        jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", 90001L);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?, ?, ?)", 90004L, 90003L, 90002L, 90001L);
+        jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", 91005L);
         jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", 91004L);
         jdbcTemplate.update("DELETE FROM hr_employee WHERE id = ?", 91001L);
         jdbcTemplate.update("DELETE FROM hr_position WHERE id = ?", 91002L);
@@ -73,8 +73,16 @@ class LeaveRequestApiIntegrationTests {
                 """, 91002L);
         jdbcTemplate.update("""
                 INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date)
-                VALUES (?, 'E-TEST-001', '测试员工', ?, ?, 'FORMAL', ?)
-                """, 91001L, 91003L, 91002L, LocalDate.of(2025, 1, 1));
+                VALUES (?, 'E-TEST-MANAGER', '测试经理', ?, ?, 'FORMAL', ?)
+                """, 91005L, 91003L, 91002L, LocalDate.of(2024, 1, 1));
+        jdbcTemplate.update("""
+                INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, manager_employee_id, employment_status, hire_date)
+                VALUES (?, 'E-TEST-001', '测试员工', ?, ?, ?, 'FORMAL', ?)
+                """, 91001L, 91003L, 91002L, 91005L, LocalDate.of(2025, 1, 1));
+        jdbcTemplate.update("""
+                INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version)
+                VALUES (?, 'test-manager', ?, ?, 'ACTIVE', 1)
+                """, 90004L, new BCryptPasswordEncoder().encode("correct-password"), 91005L);
         jdbcTemplate.update("""
                 INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version)
                 VALUES (?, 'test-employee', ?, ?, 'ACTIVE', 2)
@@ -175,13 +183,41 @@ class LeaveRequestApiIntegrationTests {
         long taskId = findTaskId(requestId);
 
         mockMvc.perform(get("/workflow/tasks")
-                        .header("Authorization", bearerToken()))
+                        .header("Authorization", managerBearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(Long.toString(taskId)))
                 .andExpect(jsonPath("$.data[0].businessId").value("94008"))
                 .andExpect(jsonPath("$.data[0].businessType").value("LEAVE"))
                 .andExpect(jsonPath("$.data[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.data[0].requestNo").value("LR94008"));
+    }
+
+    @Test
+    void superAdminCanListAndApprovePendingWorkflowTask() throws Exception {
+        long requestId = seedSubmittedLeaveRequest(94018L, "LR94018", "2026-07-28T09:00:00Z", "2026-07-28T17:00:00Z");
+        long taskId = findTaskId(requestId);
+        jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version) VALUES (?, 'workflow-admin', ?, 'ACTIVE', 0)", 90003L, new BCryptPasswordEncoder().encode("correct-password"));
+        jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, 9000002)", 92010L, 90003L);
+        String adminToken = "Bearer " + tokenService.issue(90003L, "workflow-admin", 0);
+
+        mockMvc.perform(get("/workflow/tasks")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(Long.toString(taskId)))
+                .andExpect(jsonPath("$.data[0].businessType").value("LEAVE"));
+
+        mockMvc.perform(post("/workflow/tasks/{id}/approve", taskId)
+                        .header("Authorization", adminToken)
+                        .header("Idempotency-Key", "leave-approve-super-admin-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\",\"comment\":\"admin approved\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+
+        org.junit.jupiter.api.Assertions.assertEquals("APPROVED",
+                jdbcTemplate.queryForObject("SELECT status FROM att_leave_request WHERE id = ?", String.class, requestId));
+        org.junit.jupiter.api.Assertions.assertEquals(90003L,
+                jdbcTemplate.queryForObject("SELECT actor_user_id FROM wf_action_log WHERE task_id = ? AND action = 'APPROVE'", Long.class, taskId));
     }
 
     @Test
@@ -250,7 +286,9 @@ class LeaveRequestApiIntegrationTests {
     @Test
     void workCalendarControlsLeaveDurationAndMinimumUnit() throws Exception {
         grantLeaveSubmitPermission();
-        String adminToken = "Bearer " + tokenService.issue(9000001L, "admin", 0);
+        jdbcTemplate.update("INSERT INTO sys_user (id, username, password_hash, status, session_version) VALUES (?, 'workflow-admin', ?, 'ACTIVE', 0)", 90003L, new BCryptPasswordEncoder().encode("correct-password"));
+        jdbcTemplate.update("INSERT INTO sys_user_role (id, user_id, role_id) VALUES (?, ?, 9000002)", 92010L, 90003L);
+        String adminToken = "Bearer " + tokenService.issue(90003L, "workflow-admin", 0);
         mockMvc.perform(post("/work-calendars")
                         .header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -318,16 +356,6 @@ class LeaveRequestApiIntegrationTests {
     void directManagerRuleResolvesManagerAccountWhenLeaveIsSubmitted() throws Exception {
         grantLeaveSubmitPermission();
         seedLeaveWorkflowTemplate();
-        jdbcTemplate.update("UPDATE wf_template_node SET node_type = 'DIRECT_MANAGER', approver_rule = JSON_OBJECT('type', 'DIRECT_MANAGER') WHERE id = ?", 95003L);
-        jdbcTemplate.update("""
-                INSERT INTO hr_employee (id, employee_no, name, department_id, position_id, employment_status, hire_date)
-                VALUES (?, 'E-TEST-MANAGER', '测试经理', ?, ?, 'FORMAL', ?)
-                """, 91004L, 91003L, 91002L, LocalDate.of(2024, 1, 1));
-        jdbcTemplate.update("UPDATE hr_employee SET manager_employee_id = ? WHERE id = ?", 91004L, 91001L);
-        jdbcTemplate.update("""
-                INSERT INTO sys_user (id, username, password_hash, employee_id, status, session_version)
-                VALUES (?, 'test-manager', ?, ?, 'ACTIVE', 1)
-                """, 90002L, new BCryptPasswordEncoder().encode("correct-password"), 91004L);
         jdbcTemplate.update("""
                 INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
                 VALUES (?, ?, 'ANNUAL', 2026, 16.00)
@@ -349,10 +377,38 @@ class LeaveRequestApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
 
-        org.junit.jupiter.api.Assertions.assertEquals(90002L, jdbcTemplate.queryForObject("""
+        org.junit.jupiter.api.Assertions.assertEquals(90004L, jdbcTemplate.queryForObject("""
                 SELECT assignee_user_id FROM wf_task
                 WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)
                 """, Long.class, requestId));
+    }
+
+    @Test
+    void employeeWithoutDirectManagerCannotSubmitLeave() throws Exception {
+        grantLeaveSubmitPermission();
+        seedLeaveWorkflowTemplate();
+        jdbcTemplate.update("UPDATE hr_employee SET manager_employee_id = NULL WHERE id = ?", 91001L);
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_balance (id, employee_id, balance_type, balance_year, available_hours)
+                VALUES (?, ?, 'ANNUAL', 2026, 16.00)
+                """, 93001L, 91001L);
+        long requestId = 94017L;
+        jdbcTemplate.update("""
+                INSERT INTO att_leave_request (
+                    id, request_no, employee_id, leave_type_id, start_time, end_time,
+                    duration_hours, reason, status, organization_snapshot)
+                VALUES (?, 'LR94017', ?, ?, ?, ?, 8.00, 'Annual leave', 'DRAFT', '{}')
+                """, requestId, 91001L, 92001L,
+                Instant.parse("2026-07-27T09:00:00Z"), Instant.parse("2026-07-27T17:00:00Z"));
+
+        mockMvc.perform(post("/leave-requests/{id}/submit", requestId)
+                        .header("Authorization", bearerToken())
+                        .header("Idempotency-Key", "leave-submit-missing-manager-0001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":\"0\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("当前请假流程要求直属领导审批，但该员工尚未设置可用的直属领导"));
     }
 
     @Test
@@ -380,7 +436,7 @@ class LeaveRequestApiIntegrationTests {
         long taskId = jdbcTemplate.queryForObject("SELECT id FROM wf_task WHERE instance_id = (SELECT workflow_instance_id FROM att_leave_request WHERE id = ?)", Long.class, requestId);
 
         mockMvc.perform(post("/workflow/tasks/{id}/approve", taskId)
-                        .header("Authorization", bearerToken())
+                        .header("Authorization", managerBearerToken())
                         .header("Idempotency-Key", "leave-approve-success-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":\"0\",\"comment\":\"approved\"}"))
@@ -434,7 +490,7 @@ class LeaveRequestApiIntegrationTests {
         jdbcTemplate.update("UPDATE wf_template_node SET approver_rule = JSON_OBJECT('userId', 90001) WHERE id = ?", 95004L);
 
         mockMvc.perform(post("/workflow/tasks/{id}/approve", firstTaskId)
-                        .header("Authorization", bearerToken())
+                        .header("Authorization", managerBearerToken())
                         .header("Idempotency-Key", "leave-approve-multi-node-first-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":\"0\",\"comment\":\"manager approved\"}"))
@@ -500,13 +556,13 @@ class LeaveRequestApiIntegrationTests {
         long taskId = findTaskId(requestId);
 
         mockMvc.perform(post("/workflow/tasks/{id}/approve", taskId)
-                        .header("Authorization", bearerToken())
+                        .header("Authorization", managerBearerToken())
                         .header("Idempotency-Key", "leave-approve-duplicate-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":\"0\",\"comment\":\"approved\"}"))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/workflow/tasks/{id}/approve", taskId)
-                        .header("Authorization", bearerToken())
+                        .header("Authorization", managerBearerToken())
                         .header("Idempotency-Key", "leave-approve-duplicate-0002")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":\"1\",\"comment\":\"approved again\"}"))
@@ -525,7 +581,7 @@ class LeaveRequestApiIntegrationTests {
         long taskId = findTaskId(requestId);
 
         mockMvc.perform(post("/workflow/tasks/{id}/reject", taskId)
-                        .header("Authorization", bearerToken())
+                        .header("Authorization", managerBearerToken())
                         .header("Idempotency-Key", "leave-reject-success-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":\"0\",\"comment\":\"insufficient handover\"}"))
@@ -573,7 +629,7 @@ class LeaveRequestApiIntegrationTests {
         long instanceId = findInstanceId(requestId);
 
         mockMvc.perform(post("/workflow/tasks/{id}/return", taskId)
-                        .header("Authorization", bearerToken())
+                        .header("Authorization", managerBearerToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":\"0\",\"comment\":\"please add handover details\"}"))
                 .andExpect(status().isOk())
@@ -687,6 +743,10 @@ class LeaveRequestApiIntegrationTests {
         return "Bearer " + tokenService.issue(90001L, "test-employee", 2);
     }
 
+    private String managerBearerToken() {
+        return "Bearer " + tokenService.issue(90004L, "test-manager", 1);
+    }
+
     private void grantLeaveSubmitPermission() {
         jdbcTemplate.update("INSERT INTO sys_role (id, code, name, status) VALUES (?, 'TEST_ATTENDANCE_SUBMIT', '假勤申请测试', 'ACTIVE')", 92002L);
         jdbcTemplate.update("""
@@ -755,7 +815,7 @@ class LeaveRequestApiIntegrationTests {
                 95002L, 95001L, 91003L);
         jdbcTemplate.update("""
                 INSERT INTO wf_template_node (id, template_id, node_no, node_type, approver_rule)
-                VALUES (?, ?, 1, 'SPECIFIC_USER', JSON_OBJECT('userId', 90001))
+                VALUES (?, ?, 1, 'DIRECT_MANAGER', JSON_OBJECT('type', 'DIRECT_MANAGER'))
                 """, 95003L, 95001L);
     }
 }

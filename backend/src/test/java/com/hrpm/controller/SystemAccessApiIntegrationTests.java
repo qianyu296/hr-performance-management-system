@@ -26,6 +26,7 @@ class SystemAccessApiIntegrationTests {
     private static final long ADMIN_ROLE_ID = 87011L;
     private static final long INITIAL_ROLE_ID = 87012L;
     private static final long REPLACEMENT_ROLE_ID = 87013L;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -59,10 +60,42 @@ class SystemAccessApiIntegrationTests {
     }
 
     private void clearFixtures() {
+        jdbcTemplate.update("DELETE d FROM sys_data_scope_dept d JOIN sys_role_data_scope s ON s.scope_id = d.scope_id WHERE s.role_id IN (?, ?, ?)",
+                ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
+        jdbcTemplate.update("DELETE FROM sys_role_data_scope WHERE role_id IN (?, ?, ?)",
+                ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
         jdbcTemplate.update("DELETE FROM sys_role_menu WHERE role_id IN (?, ?, ?)", ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
         jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id IN (?, ?)", ADMIN_USER_ID, TARGET_USER_ID);
         jdbcTemplate.update("DELETE FROM sys_role WHERE id IN (?, ?, ?)", ADMIN_ROLE_ID, INITIAL_ROLE_ID, REPLACEMENT_ROLE_ID);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", ADMIN_USER_ID, TARGET_USER_ID);
+    }
+
+    @Test
+    void administratorCanUpdateRolePermissionsWhenHistoricalDeletedMenuBindingExists() throws Exception {
+        String adminToken = tokenService.issueAccess(ADMIN_USER_ID, "system-access-admin", 0);
+        jdbcTemplate.update("INSERT INTO sys_role_menu (id, role_id, menu_id, deleted, version) VALUES (?, ?, ?, 1, 0)",
+                87032L, ADMIN_ROLE_ID, systemManageMenuId);
+
+        mockMvc.perform(put("/system/roles/{id}", ADMIN_ROLE_ID)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" +
+                                "\"name\":\"权限管理测试管理员\"," +
+                                "\"status\":\"ACTIVE\"," +
+                                "\"dataScopeType\":\"ALL\"," +
+                                "\"menuIds\":[\"" + systemManageMenuId + "\"]," +
+                                "\"departmentIds\":[]," +
+                                "\"version\":\"0\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(Long.toString(ADMIN_ROLE_ID)))
+                .andExpect(jsonPath("$.data.menuIds[0]").value(Long.toString(systemManageMenuId)))
+                .andExpect(jsonPath("$.data.version").value("1"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1,
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sys_role_menu WHERE role_id = ?", Integer.class, ADMIN_ROLE_ID));
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sys_role_menu WHERE role_id = ? AND menu_id = ? AND deleted = 0",
+                Integer.class, ADMIN_ROLE_ID, systemManageMenuId));
     }
 
     @Test

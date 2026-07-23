@@ -24,7 +24,7 @@ public class AttendanceMonthlySummaryController {
     public AttendanceMonthlySummaryController(AttendanceMonthlySummaryService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('attendance:manage')")
+    @PreAuthorize("hasAnyAuthority('report:read', 'attendance:manage')")
     public ApiResponse<List<AttendanceMonthlySummaryVO>> list(@RequestParam String month,
                                                                @RequestParam(required = false) Long departmentId,
                                                                @RequestParam(required = false) Long employeeId) {

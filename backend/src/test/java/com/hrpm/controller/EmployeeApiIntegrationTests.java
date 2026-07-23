@@ -90,7 +90,7 @@ class EmployeeApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.employee.employeeNo").value("EMP_TEST_003"))
                 .andExpect(jsonPath("$.data.initialUsername").value("emp_test_003"))
-                .andExpect(jsonPath("$.data.initialPassword").isNotEmpty())
+                .andExpect(jsonPath("$.data.initialPassword").value("123456"))
                 .andReturn().getResponse().getContentAsString();
 
         org.junit.jupiter.api.Assertions.assertEquals(1, jdbcTemplate.queryForObject("""

@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import LeaveManagementView from '@/views/LeaveManagementView.vue'
 import OvertimeManagementView from '@/views/OvertimeManagementView.vue'
@@ -16,9 +16,7 @@ import PersonnelChangeDetailView from '@/views/PersonnelChangeDetailView.vue'
 import SystemAccessView from '@/views/SystemAccessView.vue'
 import ReportsOverviewView from '@/views/ReportsOverviewView.vue'
 import ChangePasswordView from '@/views/ChangePasswordView.vue'
-import PeopleCenterView from '@/views/PeopleCenterView.vue'
-import AttendanceCenterView from '@/views/AttendanceCenterView.vue'
-import WorkflowCenterView from '@/views/WorkflowCenterView.vue'
+
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -33,24 +31,11 @@ const router = createRouter({
       component: DashboardView,
       meta: { title: '工作台', description: '待办、通知和关键工作概览' },
     },
-    {
-      path: '/people',
-      name: 'people',
-      component: PeopleCenterView,
-      meta: { title: '组织人事', description: '组织架构、员工档案和人事异动统一入口', permission: ['org:read', 'personnel:read'] },
-    },
-    {
-      path: '/attendance',
-      name: 'attendance',
-      component: AttendanceCenterView,
-      meta: { title: '假勤中心', description: '请假、加班、余额与规则配置统一入口', permission: ['attendance:submit', 'attendance:manage', 'attendance:balance:adjust'] },
-    },
-    {
-      path: '/workflow',
-      name: 'workflow',
-      component: WorkflowCenterView,
-      meta: { title: '审批中心', description: '审批处理和流程模板配置统一入口', permission: ['workflow:approve', 'workflow:manage'] },
-    },
+    { path: '/people', redirect: '/org/departments' },
+    { path: '/attendance', redirect: '/attendance/leave' },
+    { path: '/workflow', redirect: '/workflow/tasks' },
+    { path: '/reports', redirect: '/reports/overview' },
+    { path: '/attendance/summary', redirect: '/reports/attendance' },
     {
       path: '/org/departments',
       name: 'org-departments',
@@ -100,10 +85,10 @@ const router = createRouter({
       meta: { title: '假期余额', description: '个人余额、调整流水和统计口径', permission: ['attendance:submit', 'attendance:balance:adjust'] },
     },
     {
-      path: '/attendance/summary',
-      name: 'attendance-summary',
+      path: '/reports/attendance',
+      name: 'reports-attendance',
       component: AttendanceSummaryView,
-      meta: { title: '月度假勤汇总', description: '按员工汇总请假、加班、调休和待审批', permission: 'attendance:manage' },
+      meta: { title: '假勤统计', description: '按员工汇总请假、加班、调休和待审批', permission: 'report:read' },
     },
     {
       path: '/workflow/tasks',
@@ -121,7 +106,7 @@ const router = createRouter({
       path: '/reports/overview',
       name: 'reports-overview',
       component: ReportsOverviewView,
-      meta: { title: '数据分析', description: '人员规模和假勤指标分析', permission: 'report:read' },
+      meta: { title: '数据分析', description: '查看人员规模和假勤统计概览', permission: 'report:read' },
     },
     {
       path: '/system/users',

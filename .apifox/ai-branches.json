@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-16T02:52:41.869Z",
+  "projects": {
+    "8587615": {
+      "branches": {
+        "8365326": {
+          "projectId": 8587615,
+          "branchId": 8365326,
+          "name": "main",
+          "branchKind": "main",
+          "branchType": "SPRINT",
+          "isAiBranch": false,
+          "isAiWritableBranch": false,
+          "automationLifecycleStatus": null,
+          "isArchived": false,
+          "fetchedAt": "2026-07-16T02:50:08.538Z"
+        },
+        "8366991": {
+          "projectId": 8587615,
+          "branchId": 8366991,
+          "name": "codex/apifox-regression-20260716",
+          "branchKind": "sprint",
+          "branchType": "SPRINT",
+          "isAiBranch": false,
+          "isAiWritableBranch": false,
+          "isArchived": false,
+          "fetchedAt": "2026-07-16T02:50:46.006Z"
+        },
+        "8367012": {
+          "projectId": 8587615,
+          "branchId": 8367012,
+          "name": "ai/20260716-from-main-apifox-regression",
+          "branchKind": "ai",
+          "branchType": "SPRINT",
+          "sourceBranchId": 8365326,
+          "isAiBranch": true,
+          "isAiWritableBranch": true,
+          "automationLifecycleStatus": "ACTIVE",
+          "isArchived": false,
+          "fetchedAt": "2026-07-16T02:52:41.868Z",
+          "lastKnownStatus": "ACTIVE"
+        }
+      },
+      "lastGuardError": {
+        "type": "guard_error",
+        "projectId": 8587615,
+        "message": "Automation caller branch required",
+        "createdAt": "2026-07-16T02:50:58.908Z"
+      },
+      "recentEvents": [
+        {
+          "type": "guard_error",
+          "projectId": 8587615,
+          "message": "Automation caller branch required",
+          "createdAt": "2026-07-16T02:39:43.499Z"
+        },
+        {
+          "type": "guard_error",
+          "projectId": 8587615,
+          "message": "Automation caller branch required",
+          "createdAt": "2026-07-16T02:42:47.608Z"
+        },
+        {
+          "type": "guard_error",
+          "projectId": 8587615,
+          "message": "Automation caller branch required",
+          "createdAt": "2026-07-16T02:49:47.878Z"
+        },
+        {
+          "type": "branch_recorded",
+          "projectId": 8587615,
+          "branchId": 8365326,
+          "createdAt": "2026-07-16T02:50:08.538Z"
+        },
+        {
+          "type": "guard_error",
+          "projectId": 8587615,
+          "message": "Automation caller branch required",
+          "createdAt": "2026-07-16T02:50:08.611Z"
+        },
+        {
+          "type": "branch_recorded",
+          "projectId": 8587615,
+          "branchId": 8366991,
+          "createdAt": "2026-07-16T02:50:46.006Z"
+        },
+        {
+          "type": "guard_error",
+          "projectId": 8587615,
+          "message": "Automation caller branch required",
+          "createdAt": "2026-07-16T02:50:58.908Z"
+        },
+        {
+          "type": "branch_recorded",
+          "projectId": 8587615,
+          "branchId": 8367012,
+          "sourceBranchId": 8365326,
+          "createdAt": "2026-07-16T02:52:41.868Z"
+        }
+      ]
+    }
+  },
+  "recentEvents": [
+    {
+      "type": "guard_error",
+      "projectId": 8587615,
+      "message": "Automation caller branch required",
+      "createdAt": "2026-07-16T02:39:43.499Z"
+    },
+    {
+      "type": "guard_error",
+      "projectId": 8587615,
+      "message": "Automation caller branch required",
+      "createdAt": "2026-07-16T02:42:47.608Z"
+    },
+    {
+      "type": "guard_error",
+      "projectId": 8587615,
+      "message": "Automation caller branch required",
+      "createdAt": "2026-07-16T02:49:47.878Z"
+    },
+    {
+      "type": "branch_recorded",
+      "projectId": 8587615,
+      "branchId": 8365326,
+      "createdAt": "2026-07-16T02:50:08.538Z"
+    },
+    {
+      "type": "guard_error",
+      "projectId": 8587615,
+      "message": "Automation caller branch required",
+      "createdAt": "2026-07-16T02:50:08.611Z"
+    },
+    {
+      "type": "branch_recorded",
+      "projectId": 8587615,
+      "branchId": 8366991,
+      "createdAt": "2026-07-16T02:50:46.006Z"
+    },
+    {
+      "type": "guard_error",
+      "projectId": 8587615,
+      "message": "Automation caller branch required",
+      "createdAt": "2026-07-16T02:50:58.908Z"
+    },
+    {
+      "type": "branch_recorded",
+      "projectId": 8587615,
+      "branchId": 8367012,
+      "sourceBranchId": 8365326,
+      "createdAt": "2026-07-16T02:52:41.868Z"
+    }
+  ]
+}
