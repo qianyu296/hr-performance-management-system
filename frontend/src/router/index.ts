@@ -52,7 +52,7 @@ const router = createRouter({
       path: '/personnel/changes',
       name: 'personnel-changes',
       component: PersonnelChangesView,
-      meta: { title: '人事异动', description: '入转调离申请与审批进度', permission: 'personnel:read' },
+      meta: { title: '人事异动', description: '入转调离申请与审批进度', permission: ['personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute'] },
     },
     {
       path: '/attendance/leave',
@@ -118,7 +118,7 @@ const router = createRouter({
       path: '/personnel/changes/:id',
       name: 'personnel-change-detail',
       component: PersonnelChangeDetailView,
-      meta: { title: '异动详情', description: '查看异动明细、前后差异和交接事项', permission: 'personnel:read' },
+      meta: { title: '异动详情', description: '查看异动明细、前后差异和交接事项', permission: ['personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute'] },
     },
     { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
   ],

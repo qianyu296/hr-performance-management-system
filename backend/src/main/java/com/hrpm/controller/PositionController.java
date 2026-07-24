@@ -17,7 +17,7 @@ public class PositionController {
     public PositionController(PositionService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('org:read')")
+    @PreAuthorize("hasAnyAuthority('org:read', 'personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute')")
     public ApiResponse<List<PositionVO>> list() { return ApiResponse.success(service.list().stream().map(PositionVO::from).toList()); }
 
     @PostMapping

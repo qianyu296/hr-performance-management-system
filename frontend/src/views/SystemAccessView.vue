@@ -62,6 +62,17 @@ const dataScopeOptions = [
   { value: 'CUSTOM', label: '自定义部门' },
 ]
 const visibleMenus = computed(() => menus.value.filter((menu) => menu.permissionCode && menu.status === 'ACTIVE'))
+const permissionGroupDefinitions = [
+  { key: 'system', label: '系统设置', prefixes: ['system:'] },
+  { key: 'organization', label: '组织人事', prefixes: ['org:', 'personnel:'] },
+  { key: 'attendance', label: '假勤管理', prefixes: ['attendance:'] },
+  { key: 'workflow', label: '审批流程', prefixes: ['workflow:'] },
+  { key: 'reports', label: '数据分析', prefixes: ['report:'] },
+  { key: 'performance', label: '绩效功能', prefixes: ['performance:'] },
+]
+const permissionGroups = computed(() => permissionGroupDefinitions
+  .map((group) => ({ ...group, menus: visibleMenus.value.filter((menu) => group.prefixes.some((prefix) => menu.permissionCode?.startsWith(prefix))) }))
+  .filter((group) => group.menus.length > 0))
 
 function dataScopeLabel(value: string) {
   return dataScopeOptions.find((item) => item.value === value)?.label ?? value
@@ -344,7 +355,7 @@ onMounted(loadData)
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="userDialogVisible" title="调整用户角色" width="520px">
+    <el-dialog v-model="userDialogVisible" title="调整用户角色" width="min(520px, 94vw)" align-center class="access-dialog">
       <p v-if="selectedUser">{{ selectedUser.username }}</p>
       <el-checkbox-group :model-value="selectedRoleIds" @update:model-value="updateSelectedRoles">
         <el-space direction="vertical" alignment="start">
@@ -357,7 +368,7 @@ onMounted(loadData)
       </template>
     </el-dialog>
 
-    <el-dialog v-model="roleDialogVisible" :title="isEditingRole ? '编辑角色' : '新建角色'" width="min(900px, 94vw)">
+    <el-dialog v-model="roleDialogVisible" :title="isEditingRole ? '编辑角色' : '新建角色'" width="min(900px, 94vw)" align-center class="access-dialog role-dialog">
       <el-form label-position="top" class="role-form">
         <div class="form-grid role-form-grid">
           <el-form-item label="角色编码">
@@ -394,11 +405,21 @@ onMounted(loadData)
         </el-form-item>
 
         <el-form-item label="功能权限">
-          <el-checkbox-group v-model="roleForm.menuIds" class="role-menu-grid">
-            <el-checkbox v-for="menu in visibleMenus" :key="menu.id" :label="menu.id" class="role-menu-item">
-              <div class="role-menu-name">{{ menu.name }}</div>
-              <div class="role-menu-code">{{ menu.permissionCode }}</div>
-            </el-checkbox>
+          <el-checkbox-group v-model="roleForm.menuIds" class="permission-groups">
+            <section v-for="group in permissionGroups" :key="group.key" class="permission-group">
+              <header class="permission-group__header">
+                <div>
+                  <h3>{{ group.label }}</h3>
+                </div>
+                <span>{{ group.menus.length }} 项</span>
+              </header>
+              <div class="role-menu-grid">
+                <el-checkbox v-for="menu in group.menus" :key="menu.id" :label="menu.id" class="role-menu-item">
+                  <div class="role-menu-name">{{ menu.name }}</div>
+                  <div class="role-menu-code">{{ menu.permissionCode }}</div>
+                </el-checkbox>
+              </div>
+            </section>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
@@ -419,22 +440,92 @@ onMounted(loadData)
   display: grid;
   width: 100%;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 10px;
+}
+
+.permission-groups {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+}
+
+.permission-group {
+  padding: 12px;
+  border: 1px solid #e5eaf1;
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.permission-group__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.permission-group__header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.permission-group__header h3 {
+  margin: 0 0 2px;
+  color: #1f2d3d;
+  font-size: 15px;
+}
+
+
+.permission-group__header > span {
+  flex: 0 0 auto;
+  color: #8a96a5;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .role-menu-item {
+  display: flex;
+  min-width: 0;
+  height: auto;
+  box-sizing: border-box;
+  align-items: flex-start;
   margin-right: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
 }
 
 .role-menu-name {
   font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .role-menu-code {
+  margin-top: 2px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+:deep(.access-dialog) {
+  align-self: center;
+  flex: 0 1 auto;
+  margin: 24px auto;
+  height: auto;
+  max-height: calc(100vh - 48px);
+}
+
+:deep(.access-dialog .el-dialog__body) {
+  height: auto;
+  max-height: calc(100vh - 210px);
+  overflow-y: auto;
+  padding: 12px 20px 16px;
+}
+
+:deep(.access-dialog .el-dialog__footer) {
+  padding-top: 8px;
 }
 </style>

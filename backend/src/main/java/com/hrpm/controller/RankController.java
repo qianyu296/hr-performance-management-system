@@ -17,7 +17,7 @@ public class RankController {
     public RankController(RankService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('org:read')")
+    @PreAuthorize("hasAnyAuthority('org:read', 'personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute')")
     public ApiResponse<List<RankVO>> list() { return ApiResponse.success(service.list().stream().map(RankVO::from).toList()); }
 
     @PostMapping

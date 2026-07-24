@@ -26,7 +26,7 @@ public class EmployeeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('org:read')")
+    @PreAuthorize("hasAnyAuthority('org:read', 'personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute')")
     public ApiResponse<PageVO<EmployeeListVO>> list(@AuthenticationPrincipal AuthenticatedUser user, @RequestParam(defaultValue="1") int page,
                                                      @RequestParam(defaultValue="20") int pageSize,
                                                      @RequestParam(required=false) String keyword,

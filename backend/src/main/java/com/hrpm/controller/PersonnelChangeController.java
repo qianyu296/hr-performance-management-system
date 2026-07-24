@@ -27,7 +27,7 @@ public class PersonnelChangeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('personnel:read')")
+    @PreAuthorize("hasAnyAuthority('personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute')")
     public ApiResponse<PageVO<PersonnelChangeListItemVO>> list(@AuthenticationPrincipal AuthenticatedUser user,
                                                                @RequestParam(defaultValue = "1") int page,
                                                                 @RequestParam(defaultValue = "20") int pageSize,
@@ -48,7 +48,7 @@ public class PersonnelChangeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('personnel:read')")
+    @PreAuthorize("hasAnyAuthority('personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute')")
     public ApiResponse<PersonnelChangeDetailVO> detail(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable long id) {
         return ApiResponse.success(service.detail(user.userId(), id));
     }

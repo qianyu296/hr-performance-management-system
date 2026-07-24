@@ -5,6 +5,10 @@ export const http = axios.create({ baseURL: '/api/v1', timeout: 10_000 })
 const ACCESS_TOKEN_KEY = 'accessToken'
 const REFRESH_TOKEN_KEY = 'refreshToken'
 
+export function isForbiddenError(error: unknown) {
+  return (error as AxiosError | undefined)?.response?.status === 403
+}
+
 interface ApiResponse<T> {
   data: T
 }

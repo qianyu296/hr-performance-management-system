@@ -17,11 +17,11 @@ export const navigationItems: NavigationItem[] = [
     title: '组织人事',
     description: '组织架构、员工档案和人事异动统一入口',
     icon: OfficeBuilding,
-    permissions: ['org:read', 'personnel:read'],
+    permissions: ['org:read', 'personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute'],
     children: [
-      { path: '/org/departments', title: '组织架构', description: '部门层级、负责人和组织信息' },
-      { path: '/org/employees', title: '员工档案', description: '员工目录、任职信息和履历记录' },
-      { path: '/personnel/changes', title: '人事异动', description: '入转调离申请与审批进度', permissions: ['personnel:read'] },
+      { path: '/org/departments', title: '组织架构', description: '部门层级、负责人和组织信息', permissions: ['org:read'] },
+      { path: '/org/employees', title: '员工档案', description: '员工目录、任职信息和履历记录', permissions: ['org:read'] },
+      { path: '/personnel/changes', title: '人事异动', description: '入转调离申请与审批进度', permissions: ['personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute'] },
     ],
   },
   {

@@ -8,6 +8,7 @@ import PersonnelChangeDiff from '@/components/personnel/PersonnelChangeDiff.vue'
 import PersonnelChangeEditorDrawer from '@/components/personnel/PersonnelChangeEditorDrawer.vue'
 import ExitHandoverList from '@/components/personnel/ExitHandoverList.vue'
 import { fetchDepartmentTree, fetchEmployeeOptions, fetchPositions, fetchRanks } from '@/api/organization'
+import { isForbiddenError } from '@/api/http'
 import {
   confirmExitHandoverItem,
   createExitHandoverItem,
@@ -31,6 +32,8 @@ const employees = ref<EmployeeOption[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const editorOpen = ref(false)
+const referenceDataPermissionDenied = ref(false)
+const referenceDataPermissionMessage = '当前账号缺少人事异动所需的组织基础数据读取权限，请联系管理员在“系统设置 > 角色权限”中开放部门、岗位、职级和员工的只读权限。'
 
 function errorMessage(error: unknown) {
   const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -47,16 +50,29 @@ const ranksById = computed(() => Object.fromEntries(ranks.value.map((item) => [i
 const employeesById = computed(() => Object.fromEntries(employees.value.map((item) => [item.id, item.name])))
 
 async function loadReferenceData() {
-  const [departmentTree, positionItems, rankItems, employeePage] = await Promise.all([
+  const [departmentResult, positionResult, rankResult, employeeResult] = await Promise.allSettled([
     fetchDepartmentTree(),
     fetchPositions(),
     fetchRanks(),
     fetchEmployeeOptions(),
   ])
-  departments.value = departmentTree
-  positions.value = positionItems
-  ranks.value = rankItems
-  employees.value = employeePage
+  referenceDataPermissionDenied.value = false
+
+  if (departmentResult.status === 'fulfilled') departments.value = departmentResult.value
+  else if (isForbiddenError(departmentResult.reason)) referenceDataPermissionDenied.value = true
+  else throw departmentResult.reason
+
+  if (positionResult.status === 'fulfilled') positions.value = positionResult.value
+  else if (isForbiddenError(positionResult.reason)) referenceDataPermissionDenied.value = true
+  else throw positionResult.reason
+
+  if (rankResult.status === 'fulfilled') ranks.value = rankResult.value
+  else if (isForbiddenError(rankResult.reason)) referenceDataPermissionDenied.value = true
+  else throw rankResult.reason
+
+  if (employeeResult.status === 'fulfilled') employees.value = employeeResult.value
+  else if (isForbiddenError(employeeResult.reason)) referenceDataPermissionDenied.value = true
+  else throw employeeResult.reason
 }
 
 async function loadDetail() {
@@ -170,11 +186,21 @@ onMounted(async () => {
   <PageFrame title="异动详情" description="查看异动前后差异、交接事项和当前处理状态。">
     <template #actions>
       <el-button @click="router.push('/personnel/changes')">返回列表</el-button>
-      <el-button v-if="detail?.canEdit" @click="editorOpen = true">编辑草稿</el-button>
+      <el-button v-if="detail?.canEdit" :disabled="referenceDataPermissionDenied" @click="editorOpen = true">编辑草稿</el-button>
       <el-button v-if="detail?.canSubmit" type="primary" :loading="saving" @click="submitChange">提交审批</el-button>
       <el-button v-if="detail?.canWithdraw" type="warning" :loading="saving" @click="withdrawChange">撤回</el-button>
       <el-button v-if="detail?.canExecute" type="success" :loading="saving" @click="effectiveChange">执行生效</el-button>
     </template>
+    <el-alert
+      v-if="referenceDataPermissionDenied"
+      class="permission-alert"
+      title="缺少关联数据读取权限"
+      type="warning"
+      :closable="false"
+      show-icon
+    >
+      {{ referenceDataPermissionMessage }}
+    </el-alert>
     <template v-if="detail">
       <div class="metric-grid">
         <article class="metric-item"><span>异动单号</span><strong>{{ detail.changeNo }}</strong><small>状态：{{ detail.status }}</small></article>
@@ -226,6 +252,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.permission-alert {
+  margin-bottom: 16px;
+}
+
 .detail-copy {
   padding: 18px;
   color: #435064;

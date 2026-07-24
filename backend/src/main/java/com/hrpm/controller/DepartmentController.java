@@ -32,7 +32,7 @@ public class DepartmentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('org:read')")
+    @PreAuthorize("hasAnyAuthority('org:read', 'personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute')")
     public ApiResponse<List<DepartmentVO>> listTree(@AuthenticationPrincipal AuthenticatedUser user) {
         return ApiResponse.success(departmentService.listTree(user.userId()));
     }

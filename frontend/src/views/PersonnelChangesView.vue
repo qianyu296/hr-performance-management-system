@@ -7,12 +7,15 @@ import PageFrame from '@/components/common/PageFrame.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PersonnelChangeEditorDrawer from '@/components/personnel/PersonnelChangeEditorDrawer.vue'
 import { fetchDepartmentTree, fetchEmployeeOptions, fetchPositions, fetchRanks } from '@/api/organization'
+import { isForbiddenError } from '@/api/http'
 import { createPersonnelChange, fetchPersonnelChange, fetchPersonnelChanges, updatePersonnelChange } from '@/api/personnel'
+import { useAuthStore } from '@/stores/auth'
 import type { DepartmentNode, EmployeeOption, Position, Rank } from '@/types/organization'
 import type { PersonnelChangeDetail, PersonnelChangeEditorPayload, PersonnelChangeListItem, PersonnelChangeType, UpdatePersonnelChangePayload } from '@/types/personnel'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const departments = ref<DepartmentNode[]>([])
 const positions = ref<Position[]>([])
@@ -23,11 +26,13 @@ const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const drawerOpen = ref(false)
+const referenceDataPermissionDenied = ref(false)
 const editingDetail = ref<PersonnelChangeDetail>()
 const initialType = ref<PersonnelChangeType>('TRANSFER')
 const initialEmployeeId = ref<string>()
 const dateRange = ref<[string, string] | null>(null)
 const query = reactive({ page: 1, pageSize: 20, employeeId: '', departmentId: '', changeType: '', status: '' })
+const referenceDataPermissionMessage = '当前账号缺少人事异动所需的组织基础数据读取权限，请联系管理员在“系统设置 > 角色权限”中开放部门、岗位、职级和员工的只读权限。'
 
 function errorMessage(error: unknown) {
   const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -39,16 +44,29 @@ function flattenDepartments(nodes: DepartmentNode[]): DepartmentNode[] {
 }
 
 async function loadReferenceData() {
-  const [departmentTree, positionItems, rankItems, employeePage] = await Promise.all([
+  const [departmentResult, positionResult, rankResult, employeeResult] = await Promise.allSettled([
     fetchDepartmentTree(),
     fetchPositions(),
     fetchRanks(),
     fetchEmployeeOptions(),
   ])
-  departments.value = departmentTree
-  positions.value = positionItems
-  ranks.value = rankItems
-  employees.value = employeePage
+  referenceDataPermissionDenied.value = false
+
+  if (departmentResult.status === 'fulfilled') departments.value = departmentResult.value
+  else if (isForbiddenError(departmentResult.reason)) referenceDataPermissionDenied.value = true
+  else throw departmentResult.reason
+
+  if (positionResult.status === 'fulfilled') positions.value = positionResult.value
+  else if (isForbiddenError(positionResult.reason)) referenceDataPermissionDenied.value = true
+  else throw positionResult.reason
+
+  if (rankResult.status === 'fulfilled') ranks.value = rankResult.value
+  else if (isForbiddenError(rankResult.reason)) referenceDataPermissionDenied.value = true
+  else throw rankResult.reason
+
+  if (employeeResult.status === 'fulfilled') employees.value = employeeResult.value
+  else if (isForbiddenError(employeeResult.reason)) referenceDataPermissionDenied.value = true
+  else throw employeeResult.reason
 }
 
 async function loadChanges() {
@@ -74,6 +92,10 @@ async function loadChanges() {
 }
 
 function openCreate(type: PersonnelChangeType = 'TRANSFER', employeeId?: string) {
+  if (referenceDataPermissionDenied.value) {
+    ElMessage.warning(referenceDataPermissionMessage)
+    return
+  }
   editingDetail.value = undefined
   initialType.value = type
   initialEmployeeId.value = employeeId
@@ -81,6 +103,10 @@ function openCreate(type: PersonnelChangeType = 'TRANSFER', employeeId?: string)
 }
 
 async function openEdit(id: string) {
+  if (referenceDataPermissionDenied.value) {
+    ElMessage.warning(referenceDataPermissionMessage)
+    return
+  }
   saving.value = true
   try {
     editingDetail.value = await fetchPersonnelChange(id)
@@ -137,24 +163,24 @@ watch(() => route.query, () => {
 onMounted(async () => {
   try {
     await loadReferenceData()
-    await loadChanges()
-    await handleRouteQuery()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
+  await loadChanges()
+  await handleRouteQuery()
 })
 </script>
 
 <template>
   <PageFrame title="人事异动" description="管理入转调离草稿、审批进度和生效状态。">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="openCreate('TRANSFER')">新建异动</el-button>
+      <el-button v-if="authStore.can('personnel:create')" type="primary" :icon="Plus" :disabled="referenceDataPermissionDenied" @click="openCreate('TRANSFER')">新建异动</el-button>
     </template>
     <template #filters>
-      <el-select v-model="query.departmentId" filterable clearable placeholder="按当前部门筛选">
+      <el-select v-model="query.departmentId" filterable clearable :disabled="referenceDataPermissionDenied" placeholder="按当前部门筛选">
         <el-option v-for="item in flattenDepartments(departments)" :key="item.id" :label="item.name" :value="item.id" />
       </el-select>
-      <el-select v-model="query.employeeId" filterable clearable placeholder="按员工筛选">
+      <el-select v-model="query.employeeId" filterable clearable :disabled="referenceDataPermissionDenied" placeholder="按员工筛选">
         <el-option v-for="item in employees" :key="item.id" :label="`${item.name} · ${item.employeeNo}`" :value="item.id" />
       </el-select>
       <el-select v-model="query.changeType" clearable placeholder="异动类型">
@@ -177,6 +203,16 @@ onMounted(async () => {
       <el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" />
       <el-button @click="query.page = 1; loadChanges()">查询</el-button>
     </template>
+    <el-alert
+      v-if="referenceDataPermissionDenied"
+      class="permission-alert"
+      title="缺少关联数据读取权限"
+      type="warning"
+      :closable="false"
+      show-icon
+    >
+      {{ referenceDataPermissionMessage }}
+    </el-alert>
     <section class="employee-table-panel">
       <el-table v-loading="loading" :data="changes" class="data-table" height="620">
         <el-table-column prop="changeNo" label="单号" width="170" />
@@ -191,7 +227,7 @@ onMounted(async () => {
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="router.push(`/personnel/changes/${scope.row.id}`)">详情</el-button>
-            <el-button v-if="scope.row.status === 'DRAFT'" link @click="openEdit(scope.row.id)">编辑</el-button>
+            <el-button v-if="authStore.can('personnel:create') && scope.row.status === 'DRAFT'" link :disabled="referenceDataPermissionDenied" @click="openEdit(scope.row.id)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -212,3 +248,9 @@ onMounted(async () => {
     />
   </PageFrame>
 </template>
+
+<style scoped>
+.permission-alert {
+  margin-bottom: 16px;
+}
+</style>

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -39,7 +39,7 @@ const entries: CenterEntry[] = [
     path: '/personnel/changes',
     title: '人事异动',
     description: '处理入转调离、交接事项和异动进度。',
-    permissions: ['personnel:read'],
+    permissions: ['personnel:read', 'personnel:create', 'personnel:manage', 'personnel:approve', 'personnel:execute'],
     highlights: ['发起和跟踪入转调离申请', '查看审批流转与交接事项', '执行异动后的生效与落档'],
     actionText: '进入人事异动',
   },
